@@ -30,7 +30,7 @@ emaLen   = input.int(200, "Longueur EMA tendance", minval = 10, group = grpDet)
 invMode  = input.string("Clôture", "OB invalidé par", options = ["Clôture", "Mèche"], group = grpDet)
 
 grpBrk     = "OB cassés (invalidés)"
-showBroken = input.bool(true, "Afficher les OB cassés au lieu de les supprimer", group = grpBrk, tooltip = "Un OB cassé reste affiché en gris, arrêté à la bougie qui l'a cassé. Un OB acheteur cassé devient souvent une résistance, un OB vendeur cassé un support (breaker block).")
+showBroken = input.bool(true, "Afficher les OB cassés (coché = activé, décoché = désactivé)", group = grpBrk, tooltip = "Un OB cassé reste affiché en gris, arrêté à la bougie qui l'a cassé. Un OB acheteur cassé devient souvent une résistance, un OB vendeur cassé un support (breaker block).")
 maxBroken  = input.int(10, "Nombre max d'OB cassés affichés", minval = 1, maxval = 50, group = grpBrk)
 colBroken  = input.color(#787B86, "Couleur des OB cassés", group = grpBrk)
 
