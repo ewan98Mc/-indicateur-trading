@@ -467,6 +467,7 @@ bestStars(string tfName, bool bull) =>
                 best := o.stars
     best
 
+var bool legendMerged = false
 var table tbl = table.new(position.top_right, 3, 13, bgcolor = color.new(#131722, 0), border_color = color.new(color.gray, 70), border_width = 1, frame_color = color.new(color.gray, 50), frame_width = 1)
 
 fillRow(int row, string tfName, bool usable) =>
@@ -490,14 +491,13 @@ if showTable and barstate.islast
     fillRow(6, "W",   okW)
     if showLegend
         table.cell(tbl, 0, 7,  "LÉGENDE", text_color = color.white, text_size = size.small)
-        table.merge_cells(tbl, 0, 7, 2, 7)
         table.cell(tbl, 0, 8,  "▲ OB acheteur   ▼ OB vendeur", text_color = color.white, text_size = size.small, text_halign = text.align_left)
-        table.merge_cells(tbl, 0, 8, 2, 8)
         table.cell(tbl, 0, 9,  "◆ POI = OB de 2 UT superposés", text_color = colPoiBull, text_size = size.small, text_halign = text.align_left)
-        table.merge_cells(tbl, 0, 9, 2, 9)
         table.cell(tbl, 0, 10, "★★★★★ = 5 confluences (doré)", text_color = col5, text_size = size.small, text_halign = text.align_left)
-        table.merge_cells(tbl, 0, 10, 2, 10)
         table.cell(tbl, 0, 11, "Trait plein = jamais touché", text_color = color.white, text_size = size.small, text_halign = text.align_left)
-        table.merge_cells(tbl, 0, 11, 2, 11)
         table.cell(tbl, 0, 12, "Tirets = déjà touché", text_color = color.white, text_size = size.small, text_halign = text.align_left)
-        table.merge_cells(tbl, 0, 12, 2, 12)
+        // fusion des cellules de la légende une seule fois
+        if not legendMerged
+            for r = 7 to 12
+                table.merge_cells(tbl, 0, r, 2, r)
+            legendMerged := true
