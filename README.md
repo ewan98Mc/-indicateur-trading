@@ -28,7 +28,7 @@ Detection logic, per timeframe:
 - Each box is labelled with its timeframe and rating, e.g. `4H ★★★★★` and the confluences it has (`DISP FVG BOS SWEEP TREND`).
 - **Solid border**: a fresh OB, never touched. This is the one that has the best chance of a bounce.
 - **Dashed border**: price has already touched it once.
-- A box is removed when a candle **closes through it** (you can switch this to "wick" in the settings).
+- A box is removed when a candle **closes through it** (you can switch this to "Mèche" in the settings).
 - **Summary table** (top right): the best *fresh* bullish and bearish OB on each timeframe.
 - Timeframes **lower** than your chart timeframe show as `off`. For example, on a 15m chart the 3m and 5m OBs aren't shown. To see every timeframe, use a 3m chart.
 
@@ -48,21 +48,21 @@ appears and then disappears afterwards.
 ## Alerts
 
 Right-click the chart, choose **Add alert**, and set the condition to **OB POI ★**. Then pick one of:
-- `5★ bullish OB touched` / `5★ bearish OB touched`
-- `OB touched (min stars)`: uses the "Alert when price touches an OB with at least (stars)" setting, 4 by default
+- `OB haussier 5★ touché` / `OB baissier 5★ touché`
+- `OB touché (étoiles min)`: uses the "Alerte si le prix touche un OB d'au moins (étoiles)" setting, 4 by default
 - **Any alert() function call**: a detailed message with the ticker, rating, timeframe and price zone
 
-## Main settings
+## Main settings (the indicator's settings are in French)
 
 | Setting | Default | Notes |
 |---------|---------|-------|
-| Show OBs with at least | 3 ★ | Set to 5 to see only the best POIs |
-| Max active OBs per TF and side | 3 | Keeps the chart clean |
-| OB zone | Wick | `Body` gives a tighter zone (open–close) |
-| Displacement | 1.5 × ATR | Higher means stricter |
-| Swing length (BOS) | 5 | |
-| Liquidity sweep lookback | 20 | |
-| Trend EMA | 200 | |
+| Afficher les OB d'au moins | 3 ★ | Set to 5 to see only the best POIs |
+| OB actifs max par UT et par sens | 3 | Keeps the chart clean |
+| Zone de l'OB | Mèche | `Corps` gives a tighter zone (open–close) |
+| Déplacement | 1.5 × ATR | Higher means stricter |
+| Longueur swing (BOS) | 5 | |
+| Recul prise de liquidité | 20 | |
+| Longueur EMA tendance | 200 | |
 
 ---
 
