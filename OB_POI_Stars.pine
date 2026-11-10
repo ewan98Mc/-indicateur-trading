@@ -12,6 +12,16 @@
 indicator("OB POI ★ — Order Blocks Multi-UT", shorttitle = "OB POI ★", overlay = true, max_boxes_count = 500, max_labels_count = 500)
 
 // ───────────── Réglages ─────────────
+grpSel   = "Sélection des OB à afficher"
+showBuy  = input.bool(true,  "OB acheteurs (▲)", inline = "s0", group = grpSel)
+showSell = input.bool(true,  "OB vendeurs (▼)",  inline = "s0", group = grpSel)
+show5    = input.bool(true,  "OB 5 ★",           inline = "s1", group = grpSel)
+show4    = input.bool(true,  "OB 4 ★",           inline = "s1", group = grpSel)
+show3    = input.bool(true,  "OB 3 ★",           inline = "s1", group = grpSel)
+show2    = input.bool(false, "OB 2 ★ (non validé)", inline = "s2", group = grpSel)
+show1    = input.bool(false, "OB 1 ★ (non validé)", inline = "s2", group = grpSel)
+show0    = input.bool(false, "OB 0 ★ (non validé)", inline = "s3", group = grpSel, tooltip = "Un OB non validé a moins de 3 confluences. Coche les cases des OB que tu veux voir, décoche celles que tu ne veux pas.")
+
 grpTF = "Unités de temps"
 use3  = input.bool(true, "3 min",  inline = "t1", group = grpTF)
 use5  = input.bool(true, "5 min",  inline = "t1", group = grpTF)
@@ -35,7 +45,6 @@ maxBroken  = input.int(10, "Nombre max d'OB cassés affichés", minval = 1, maxv
 colBroken  = input.color(#787B86, "Couleur des OB cassés", group = grpBrk)
 
 grpDisp   = "Affichage"
-minStars  = input.int(3, "Afficher les OB d'au moins (étoiles)", minval = 0, maxval = 5, group = grpDisp)
 maxPerTF  = input.int(3, "OB actifs max par UT et par sens", minval = 1, maxval = 10, group = grpDisp)
 showLbl   = input.bool(true, "Afficher l'étiquette (UT + étoiles)", group = grpDisp)
 showDet   = input.bool(false, "Écrire aussi les confluences sur l'étiquette", group = grpDisp, tooltip = "Désactivé : les confluences s'affichent quand tu passes la souris sur l'étiquette.")
@@ -61,6 +70,9 @@ starStr(int n) =>
     for i = 1 to 5
         s := s + (i <= n ? "★" : "☆")
     s
+
+starAllowed(int n) =>
+    n == 5 ? show5 : n == 4 ? show4 : n == 3 ? show3 : n == 2 ? show2 : n == 1 ? show1 : show0
 
 // masque : DÉPLACEMENT = 1, DISCOUNT/PREMIUM = 2, BOS = 4, SWEEP = 8, TENDANCE = 16
 hasBit(int m, int b) =>
@@ -165,7 +177,7 @@ addOB(float top, float bot, int t, int mask, bool bull, string tfName) =>
     int    stars = countStars(mask)
     color  c     = stars == 5 ? col5 : bull ? colBull : colBear
     string det   = detTxt(mask, bull)
-    string txt   = (bull ? "▲ " : "▼ ") + tfName + " " + starStr(stars) + (showDet ? "\n" + det : "")
+    string txt   = (bull ? "▲ " : "▼ ") + tfName + " " + starStr(stars) + (stars < 3 ? " non validé" : "") + (showDet ? "\n" + det : "")
     box bx = box.new(t, top, time, bot, xloc = xloc.bar_time, border_color = c, border_width = stars == 5 ? borderW + 1 : borderW, bgcolor = color.new(c, fillTransp))
     label lb = na
     if showLbl
@@ -190,8 +202,8 @@ handleTF(simple string tf, string tfName, bool enabled) =>
     bool usable  = enabled and timeframe.in_seconds(tf) >= timeframe.in_seconds()
     int  prevB   = nz(bTm[1])
     int  prevS   = nz(sTm[1])
-    bool newBull = usable and bTm > 0 and bTm != prevB and not na(bT) and countStars(bM) >= minStars
-    bool newBear = usable and sTm > 0 and sTm != prevS and not na(sT) and countStars(sM) >= minStars
+    bool newBull = usable and bTm > 0 and bTm != prevB and not na(bT) and showBuy and starAllowed(countStars(bM))
+    bool newBear = usable and sTm > 0 and sTm != prevS and not na(sT) and showSell and starAllowed(countStars(sM))
     if newBull
         addOB(bT, bB, bTm, bM, true, tfName)
     if newBear

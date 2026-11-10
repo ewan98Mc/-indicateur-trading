@@ -32,6 +32,15 @@ Chaque OB gagne **une étoile par confluence** :
 - **Unités de temps plus petites que ton graphique** : elles affichent `off`. Pour voir les 6 unités de temps, mets ton graphique en 3m.
 - **Non repaint** : un OB n'apparaît qu'une fois la bougie de son unité de temps clôturée.
 
+## Choisir les OB à afficher (réglages ⚙, section « Sélection des OB à afficher »)
+
+Coche les OB qui t'intéressent, décoche les autres :
+
+- **OB acheteurs (▲)** / **OB vendeurs (▼)** : pour afficher seulement les achats ou seulement les ventes.
+- **OB 5 ★**, **OB 4 ★**, **OB 3 ★** : les OB validés, cochés par défaut. Par exemple, coche seulement « OB 5 ★ » pour ne voir que les meilleurs POI.
+- **OB 2 ★**, **OB 1 ★**, **OB 0 ★** : les **OB non validés** (moins de 3 confluences), décochés par défaut. Coche-les pour les voir : leur étiquette affiche « non validé ».
+- **OB cassés** : section « OB cassés (invalidés) », case « Afficher les OB cassés » pour les activer ou les désactiver.
+
 ## Couleurs (réglages ⚙, onglet « Couleurs »)
 
 - **Zones** : couleur de l'OB haussier, de l'OB baissier et de l'OB 5 ★.
