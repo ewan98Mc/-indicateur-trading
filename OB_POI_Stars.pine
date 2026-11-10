@@ -29,6 +29,11 @@ sweepLen = input.int(20, "Recul prise de liquidité", minval = 3, group = grpDet
 emaLen   = input.int(200, "Longueur EMA tendance", minval = 10, group = grpDet)
 invMode  = input.string("Clôture", "OB invalidé par", options = ["Clôture", "Mèche"], group = grpDet)
 
+grpBrk     = "OB cassés (invalidés)"
+showBroken = input.bool(true, "Afficher les OB cassés au lieu de les supprimer", group = grpBrk, tooltip = "Un OB cassé reste affiché en gris, arrêté à la bougie qui l'a cassé. Un OB acheteur cassé devient souvent une résistance, un OB vendeur cassé un support (breaker block).")
+maxBroken  = input.int(10, "Nombre max d'OB cassés affichés", minval = 1, maxval = 50, group = grpBrk)
+colBroken  = input.color(#787B86, "Couleur des OB cassés", group = grpBrk)
+
 grpDisp   = "Affichage"
 minStars  = input.int(3, "Afficher les OB d'au moins (étoiles)", minval = 0, maxval = 5, group = grpDisp)
 maxPerTF  = input.int(3, "OB actifs max par UT et par sens", minval = 1, maxval = 10, group = grpDisp)
@@ -153,7 +158,8 @@ type OB
     string tf
     bool   touched
 
-var array<OB> obs = array.new<OB>()
+var array<OB> obs    = array.new<OB>()
+var array<OB> broken = array.new<OB>()
 
 addOB(float top, float bot, int t, int mask, bool bull, string tfName) =>
     int    stars = countStars(mask)
@@ -208,12 +214,30 @@ bool touchMin   = false
 if obs.size() > 0
     for i = obs.size() - 1 to 0
         OB o = obs.get(i)
-        bool broken = o.bull ? (invMode == "Clôture" ? close < o.bot : low < o.bot) : (invMode == "Clôture" ? close > o.top : high > o.top)
-        if broken
-            o.bx.delete()
-            if not na(o.lb)
-                o.lb.delete()
+        bool isBroken = o.bull ? (invMode == "Clôture" ? close < o.bot : low < o.bot) : (invMode == "Clôture" ? close > o.top : high > o.top)
+        if isBroken
             obs.remove(i)
+            if showBroken
+                // l'OB reste affiché en gris, arrêté à la bougie qui l'a cassé
+                o.bx.set_right(time)
+                o.bx.set_bgcolor(color.new(colBroken, fillTransp))
+                o.bx.set_border_color(colBroken)
+                o.bx.set_border_style(line.style_dotted)
+                if not na(o.lb)
+                    o.lb.set_x(time)
+                    o.lb.set_color(color.new(colBroken, lblTransp))
+                    o.lb.set_textcolor(color.white)
+                    o.lb.set_text("✖ " + o.tf + " " + starStr(o.stars) + " cassé")
+                broken.push(o)
+                if broken.size() > maxBroken
+                    OB old = broken.shift()
+                    old.bx.delete()
+                    if not na(old.lb)
+                        old.lb.delete()
+            else
+                o.bx.delete()
+                if not na(o.lb)
+                    o.lb.delete()
         else
             bool inZone = o.bull ? low <= o.top : high >= o.bot
             if inZone and not o.touched

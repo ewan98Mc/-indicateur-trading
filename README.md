@@ -27,7 +27,7 @@ Chaque OB gagne **une étoile par confluence** :
 - **Détail des confluences** : passe la souris sur l'étiquette pour voir les ✔ et les ✘. Tu peux aussi les écrire directement sur l'étiquette dans les réglages.
 - **Bordure pleine** : OB jamais touché. C'est lui qui a le plus de chances de faire rebondir le prix.
 - **Bordure en pointillés** : le prix l'a déjà touché une fois.
-- **Suppression** : la zone disparaît quand une bougie clôture à travers elle (ou quand une mèche la traverse, selon le réglage).
+- **OB cassé** : quand une bougie clôture à travers la zone (ou quand une mèche la traverse, selon le réglage), l'OB passe **en gris**, avec une bordure en petits points et l'étiquette `✖ 4H ★★★☆☆ cassé`. Il s'arrête à la bougie qui l'a cassé. Un OB acheteur cassé devient souvent une résistance, et un OB vendeur cassé un support (breaker block). Tu peux régler la couleur et le nombre d'OB cassés affichés (10 par défaut), ou choisir de les supprimer, dans l'onglet « OB cassés (invalidés) ».
 - **Tableau en haut à droite** : le meilleur OB haussier et baissier pas encore touché, pour chaque unité de temps.
 - **Unités de temps plus petites que ton graphique** : elles affichent `off`. Pour voir les 6 unités de temps, mets ton graphique en 3m.
 - **Non repaint** : un OB n'apparaît qu'une fois la bougie de son unité de temps clôturée.
