@@ -38,9 +38,9 @@ minStars  = input.int(3, "Show OBs with at least (stars)", minval = 0, maxval = 
 maxPerTF  = input.int(3, "Max active OBs per TF and side", minval = 1, maxval = 10, group = grpDisp)
 showDet   = input.bool(true, "Show confluence details on the box", group = grpDisp)
 showTable = input.bool(true, "Show summary table", group = grpDisp)
-colBull   = input.color(color.new(#089981, 0), "Bullish OB", inline = "c", group = grpDisp)
-colBear   = input.color(color.new(#F23645, 0), "Bearish OB", inline = "c", group = grpDisp)
-col5      = input.color(color.new(#FFC107, 0), "5 ★ OB",     inline = "c", group = grpDisp)
+colBull   = input.color(#089981, "Bullish OB", inline = "c", group = grpDisp)
+colBear   = input.color(#F23645, "Bearish OB", inline = "c", group = grpDisp)
+col5      = input.color(#FFC107, "5 ★ OB",     inline = "c", group = grpDisp)
 
 grpAl         = "Alerts"
 alertMinStars = input.int(4, "Alert when price touches an OB with at least (stars)", minval = 0, maxval = 5, group = grpAl)
@@ -135,8 +135,8 @@ boxColor(bool bull, int stars) =>
 
 addOB(float top, float bot, int t, int stars, string det, bool bull, string tfName) =>
     color  c   = boxColor(bull, stars)
-    string txt = tfName + " " + starStr(stars) + (showDet and str.length(det) > 0 ? "\n" + str.trim(det) : "")
-    box bx = box.new(t, top, time, bot, xloc = xloc.bar_time, border_color = c, border_width = stars == 5 ? 2 : 1, bgcolor = color.new(c, 88 - stars * 6), text = txt, text_color = color.new(c, 0), text_size = size.small, text_halign = text.align.right, text_valign = text.align.center)
+    string txt = tfName + " " + starStr(stars) + (showDet and str.length(det) > 0 ? "\n" + det : "")
+    box bx = box.new(t, top, time, bot, xloc = xloc.bar_time, border_color = c, border_width = stars == 5 ? 2 : 1, bgcolor = color.new(c, 88 - stars * 6), text = txt, text_color = color.new(c, 0), text_size = size.small, text_halign = text.align_right, text_valign = text.align_center)
     obs.push(OB.new(bx, top, bot, bull, stars, tfName, false))
     // keep only the newest `maxPerTF` OBs for this TF and side
     int cnt = 0
