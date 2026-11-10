@@ -7,6 +7,7 @@
 //    SWEEP       = la bougie OB prend la liquidité (plus bas / plus haut récent)
 //    DISCOUNT / PREMIUM = OB haussier sous le 50 % du range, OB baissier au-dessus
 //    TENDANCE    = OB dans le sens de la tendance (EMA 200)
+//  + POI multi-UT (OB de plusieurs UT superposés) et niveaux de liquidité PDH/PDL, PWH/PWL
 //  UT : 3m · 5m · 15m · 4H · Daily · Weekly — Non repaint
 // ═══════════════════════════════════════════════════════════════════
 indicator("OB POI ★ — Order Blocks Multi-UT", shorttitle = "OB POI ★", overlay = true, max_boxes_count = 500, max_labels_count = 500)
@@ -21,6 +22,17 @@ show3    = input.bool(true,  "OB 3 ★",           inline = "s1", group = grpSel
 show2    = input.bool(false, "OB 2 ★ (non validé)", inline = "s2", group = grpSel)
 show1    = input.bool(false, "OB 1 ★ (non validé)", inline = "s2", group = grpSel)
 show0    = input.bool(false, "OB 0 ★ (non validé)", inline = "s3", group = grpSel, tooltip = "Un OB non validé a moins de 3 confluences. Coche les cases des OB que tu veux voir, décoche celles que tu ne veux pas.")
+
+grpPoi   = "POI (points d'intérêt)"
+showPoi  = input.bool(true, "Afficher les POI multi-UT (coché = activé)", group = grpPoi, tooltip = "Un POI multi-UT est la zone où un OB d'une unité de temps se superpose à un OB d'une autre unité de temps, dans le même sens (ex : OB 15m dans un OB 4H). Il prend les étoiles du meilleur des deux OB + 1 étoile bonus (max 5).")
+poi5     = input.bool(true,  "POI 5 ★", inline = "p1", group = grpPoi)
+poi4     = input.bool(true,  "POI 4 ★", inline = "p1", group = grpPoi)
+poi3     = input.bool(true,  "POI 3 ★", inline = "p1", group = grpPoi)
+poi2     = input.bool(false, "POI 2 ★ (non validé)", inline = "p2", group = grpPoi)
+poi1     = input.bool(false, "POI 1 ★ (non validé)", inline = "p2", group = grpPoi)
+maxPoi   = input.int(5, "POI actifs max par sens", minval = 1, maxval = 20, group = grpPoi)
+showPDHL = input.bool(true, "Plus haut / plus bas de la veille (PDH / PDL)", group = grpPoi)
+showPWHL = input.bool(true, "Plus haut / plus bas de la semaine dernière (PWH / PWL)", group = grpPoi)
 
 grpTF = "Unités de temps"
 use3  = input.bool(true, "3 min",  inline = "t1", group = grpTF)
@@ -59,6 +71,9 @@ borderW   = input.int(1, "Épaisseur de la bordure", minval = 0, maxval = 4, gro
 txtCol    = input.color(color.white, "Texte étiquette", inline = "c2", group = grpCol)
 txtCol5   = input.color(color.black, "Texte étiquette 5 ★", inline = "c2", group = grpCol)
 lblTransp = input.int(0, "Transparence de l'étiquette (%)", minval = 0, maxval = 100, group = grpCol)
+colPoiBull = input.color(#2962FF, "POI haussier", inline = "c3", group = grpCol)
+colPoiBear = input.color(#9C27B0, "POI baissier", inline = "c3", group = grpCol)
+colLiq    = input.color(#FF9800, "Niveaux de liquidité", inline = "c3", group = grpCol)
 txtSizeIn = input.string("Normal", "Taille du texte", options = ["Petit", "Normal", "Grand"], group = grpCol)
 txtSize   = txtSizeIn == "Petit" ? size.small : txtSizeIn == "Grand" ? size.large : size.normal
 
@@ -73,6 +88,9 @@ starStr(int n) =>
 
 starAllowed(int n) =>
     n == 5 ? show5 : n == 4 ? show4 : n == 3 ? show3 : n == 2 ? show2 : n == 1 ? show1 : show0
+
+poiAllowed(int n) =>
+    n == 5 ? poi5 : n == 4 ? poi4 : n == 3 ? poi3 : n == 2 ? poi2 : poi1
 
 // masque : DÉPLACEMENT = 1, DISCOUNT/PREMIUM = 2, BOS = 4, SWEEP = 8, TENDANCE = 16
 hasBit(int m, int b) =>
@@ -172,6 +190,26 @@ type OB
 
 var array<OB> obs    = array.new<OB>()
 var array<OB> broken = array.new<OB>()
+var array<OB> pois   = array.new<OB>()
+
+addPOI(float top, float bot, int left, int stars, bool bull, string name) =>
+    color c = bull ? colPoiBull : colPoiBear
+    box bx = box.new(left, top, time, bot, xloc = xloc.bar_time, border_color = c, border_width = borderW + 1, bgcolor = color.new(c, fillTransp))
+    string txt = "◆ POI " + name + " " + starStr(stars) + (stars < 3 ? " non validé" : "")
+    label lb = na
+    if showLbl
+        lb := label.new(time, (top + bot) / 2, txt, xloc = xloc.bar_time, style = label.style_label_left, color = color.new(c, lblTransp), textcolor = txtCol, size = txtSize, tooltip = "POI " + (bull ? "HAUSSIER" : "BAISSIER") + " multi-UT : les OB " + name + " se superposent ici.\nPlusieurs unités de temps montrent des ordres importants au même endroit.", textalign = text.align_left)
+    pois.push(OB.new(bx, lb, top, bot, bull, stars, name, false))
+    int cnt = 0
+    for i = pois.size() - 1 to 0
+        OB o = pois.get(i)
+        if o.bull == bull
+            cnt += 1
+            if cnt > maxPoi
+                o.bx.delete()
+                if not na(o.lb)
+                    o.lb.delete()
+                pois.remove(i)
 
 addOB(float top, float bot, int t, int mask, bool bull, string tfName) =>
     int    stars = countStars(mask)
@@ -194,6 +232,16 @@ addOB(float top, float bot, int t, int mask, bool bull, string tfName) =>
                 if not na(o.lb)
                     o.lb.delete()
                 obs.remove(i)
+    // POI multi-UT : cet OB se superpose à un OB d'une autre UT dans le même sens
+    if showPoi
+        for j = 0 to obs.size() - 1
+            OB o = obs.get(j)
+            if o.bull == bull and o.tf != tfName and o.top >= bot and o.bot <= top
+                float pTop   = math.min(o.top, top)
+                float pBot   = math.max(o.bot, bot)
+                int   pStars = math.min(5, math.max(o.stars, stars) + 1)
+                if pTop > pBot and poiAllowed(pStars)
+                    addPOI(pTop, pBot, math.max(t, o.bx.get_left()), pStars, bull, o.tf + "+" + tfName)
     stars
 
 // Non repaint : [1] + lookahead_on = dernière bougie CLÔTURÉE de l'UT demandée
@@ -219,58 +267,87 @@ bool okD  = handleTF("D",   "D",   useD)
 bool okW  = handleTF("W",   "W",   useW)
 
 int  futureT    = time + 10 * (time - nz(time[1], time))
-bool touch5Bull = false
-bool touch5Bear = false
-bool touchMin   = false
-
-if obs.size() > 0
-    for i = obs.size() - 1 to 0
-        OB o = obs.get(i)
-        bool isBroken = o.bull ? (invMode == "Clôture" ? close < o.bot : low < o.bot) : (invMode == "Clôture" ? close > o.top : high > o.top)
-        if isBroken
-            obs.remove(i)
-            if showBroken
-                // l'OB reste affiché en gris, arrêté à la bougie qui l'a cassé
-                o.bx.set_right(time)
-                o.bx.set_bgcolor(color.new(colBroken, fillTransp))
-                o.bx.set_border_color(colBroken)
-                o.bx.set_border_style(line.style_dotted)
-                if not na(o.lb)
-                    o.lb.set_x(time)
-                    o.lb.set_color(color.new(colBroken, lblTransp))
-                    o.lb.set_textcolor(color.white)
-                    o.lb.set_text("✖ " + o.tf + " " + starStr(o.stars) + " cassé")
-                broken.push(o)
-                if broken.size() > maxBroken
-                    OB old = broken.shift()
-                    old.bx.delete()
-                    if not na(old.lb)
-                        old.lb.delete()
+// Gère les zones touchées et cassées (OB ou POI)
+processZones(array<OB> arr, string prefix) =>
+    bool t5b  = false
+    bool t5s  = false
+    bool tMin = false
+    if arr.size() > 0
+        for i = arr.size() - 1 to 0
+            OB o = arr.get(i)
+            bool isBroken = o.bull ? (invMode == "Clôture" ? close < o.bot : low < o.bot) : (invMode == "Clôture" ? close > o.top : high > o.top)
+            if isBroken
+                arr.remove(i)
+                if showBroken
+                    // la zone reste affichée en gris, arrêtée à la bougie qui l'a cassée
+                    o.bx.set_right(time)
+                    o.bx.set_bgcolor(color.new(colBroken, fillTransp))
+                    o.bx.set_border_color(colBroken)
+                    o.bx.set_border_style(line.style_dotted)
+                    if not na(o.lb)
+                        o.lb.set_x(time)
+                        o.lb.set_color(color.new(colBroken, lblTransp))
+                        o.lb.set_textcolor(color.white)
+                        o.lb.set_text("✖ " + prefix + o.tf + " " + starStr(o.stars) + " cassé")
+                    broken.push(o)
+                    if broken.size() > maxBroken
+                        OB old = broken.shift()
+                        old.bx.delete()
+                        if not na(old.lb)
+                            old.lb.delete()
+                else
+                    o.bx.delete()
+                    if not na(o.lb)
+                        o.lb.delete()
             else
-                o.bx.delete()
-                if not na(o.lb)
-                    o.lb.delete()
-        else
-            bool inZone = o.bull ? low <= o.top : high >= o.bot
-            if inZone and not o.touched
-                o.touched := true
-                o.bx.set_border_style(line.style_dashed)
-                if o.stars >= alertMinStars
-                    touchMin := true
-                    alert(syminfo.ticker + " : prix sur un OB " + (o.bull ? "HAUSSIER " : "BAISSIER ") + starStr(o.stars) + " [" + o.tf + "] " + str.tostring(o.bot, format.mintick) + " - " + str.tostring(o.top, format.mintick), alert.freq_once_per_bar)
-                if o.stars == 5
-                    if o.bull
-                        touch5Bull := true
-                    else
-                        touch5Bear := true
-            if barstate.islast
-                o.bx.set_right(futureT)
-                if not na(o.lb)
-                    o.lb.set_x(futureT)
+                bool inZone = o.bull ? low <= o.top : high >= o.bot
+                if inZone and not o.touched
+                    o.touched := true
+                    o.bx.set_border_style(line.style_dashed)
+                    if o.stars >= alertMinStars
+                        tMin := true
+                        alert(syminfo.ticker + " : prix sur un " + prefix + (o.bull ? "HAUSSIER " : "BAISSIER ") + starStr(o.stars) + " [" + o.tf + "] " + str.tostring(o.bot, format.mintick) + " - " + str.tostring(o.top, format.mintick), alert.freq_once_per_bar)
+                    if o.stars == 5
+                        if o.bull
+                            t5b := true
+                        else
+                            t5s := true
+                if barstate.islast
+                    o.bx.set_right(futureT)
+                    if not na(o.lb)
+                        o.lb.set_x(futureT)
+    [t5b, t5s, tMin]
 
-alertcondition(touch5Bull, "OB haussier 5★ touché", "{{ticker}} : le prix touche un OB HAUSSIER 5★")
-alertcondition(touch5Bear, "OB baissier 5★ touché", "{{ticker}} : le prix touche un OB BAISSIER 5★")
+[ob5Bull, ob5Bear, obMin]    = processZones(obs, "OB ")
+[poi5Bull, poi5Bear, poiMin] = processZones(pois, "POI ")
+bool touch5Bull = ob5Bull or poi5Bull
+bool touch5Bear = ob5Bear or poi5Bear
+bool touchMin   = obMin
+bool touchPoi   = poiMin
+
+// ───────────── Niveaux de liquidité (veille / semaine dernière) ─────────────
+[pdh, pdl, dStart] = request.security(syminfo.tickerid, "D", [high[1], low[1], time], lookahead = barmerge.lookahead_on)
+[pwh, pwl, wStart] = request.security(syminfo.tickerid, "W", [high[1], low[1], time], lookahead = barmerge.lookahead_on)
+
+drawLevel(bool show, float price, int x1, string txt) =>
+    var line  ln = na
+    var label lb = na
+    if barstate.islast
+        line.delete(ln)
+        label.delete(lb)
+        if show and not na(price)
+            ln := line.new(x1, price, futureT, price, xloc = xloc.bar_time, color = colLiq, style = line.style_dashed, width = 1)
+            lb := label.new(futureT, price, txt, xloc = xloc.bar_time, style = label.style_label_left, color = color.new(colLiq, lblTransp), textcolor = txtCol, size = size.small, tooltip = "Niveau de liquidité : beaucoup de stops sont placés ici.")
+
+drawLevel(showPDHL, pdh, dStart, "PDH")
+drawLevel(showPDHL, pdl, dStart, "PDL")
+drawLevel(showPWHL, pwh, wStart, "PWH")
+drawLevel(showPWHL, pwl, wStart, "PWL")
+
+alertcondition(touch5Bull, "OB/POI haussier 5★ touché", "{{ticker}} : le prix touche un OB ou POI HAUSSIER 5★")
+alertcondition(touch5Bear, "OB/POI baissier 5★ touché", "{{ticker}} : le prix touche un OB ou POI BAISSIER 5★")
 alertcondition(touchMin,   "OB touché (étoiles min)", "{{ticker}} : le prix touche un OB bien noté")
+alertcondition(touchPoi,   "POI touché (étoiles min)", "{{ticker}} : le prix touche un POI multi-UT bien noté")
 
 // ───────────── Tableau ─────────────
 bestStars(string tfName, bool bull) =>

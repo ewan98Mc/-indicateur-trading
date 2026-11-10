@@ -41,6 +41,15 @@ Coche les OB qui t'intéressent, décoche les autres :
 - **OB 2 ★**, **OB 1 ★**, **OB 0 ★** : les **OB non validés** (moins de 3 confluences), décochés par défaut. Coche-les pour les voir : leur étiquette affiche « non validé ».
 - **OB cassés** : section « OB cassés (invalidés) », case « Afficher les OB cassés » pour les activer ou les désactiver.
 
+## POI (points d'intérêt), section « POI (points d'intérêt) »
+
+Un POI est une zone où le prix peut réagir parce que des ordres importants y sont probablement placés. En plus des OB, l'indicateur affiche deux types de POI :
+
+- **POI multi-UT (◆)** : la zone où un OB d'une unité de temps se superpose à un OB d'une autre unité de temps dans le même sens, par exemple `◆ POI 4H+15m ★★★★★`. Il prend les étoiles du meilleur des deux OB **+ 1 étoile bonus** (5 au maximum). Couleurs : bleu (haussier) et violet (baissier), modifiables. Tu peux les activer ou les désactiver, cocher les POI de 5 ★ à 1 ★ qui t'intéressent (1 ★ et 2 ★ = non validés), et régler le nombre maximum affiché. Les POI cassés passent en gris comme les OB.
+- **Niveaux de liquidité** (lignes orange en pointillés) : **PDH / PDL** (plus haut et plus bas de la veille) et **PWH / PWL** (plus haut et plus bas de la semaine dernière). Beaucoup de stops sont placés à ces niveaux. Une case pour chaque paire.
+
+Un POI multi-UT n'est créé qu'à partir des OB affichés : si tu décoches des OB, ils ne servent pas à former des POI.
+
 ## Couleurs (réglages ⚙, onglet « Couleurs »)
 
 - **Zones** : couleur de l'OB haussier, de l'OB baissier et de l'OB 5 ★.
@@ -59,7 +68,8 @@ Coche les OB qui t'intéressent, décoche les autres :
 
 Clic droit sur le graphique, choisis **Ajouter une alerte**, sélectionne la condition **OB POI ★**, puis l'une de ces alertes :
 
-- `OB haussier 5★ touché` / `OB baissier 5★ touché`
+- `OB/POI haussier 5★ touché` / `OB/POI baissier 5★ touché`
+- `POI touché (étoiles min)` : un POI multi-UT touché, avec le même minimum d'étoiles que les OB
 - `OB touché (étoiles min)` : se déclenche à partir de 4 ★ par défaut. Tu peux changer ce minimum dans les réglages.
 - **N'importe quel appel de fonction alert()** : message détaillé avec le ticker, les étoiles, l'unité de temps et la zone de prix.
 
