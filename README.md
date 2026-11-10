@@ -23,33 +23,34 @@ Un OB est détecté en **3m, 5m, 15m, 4H, Daily et Weekly** et gagne **une étoi
 
 **① Affichage général**
 - **Style des zones** : **Traits** (par défaut) = une ligne en haut et une ligne en bas de chaque zone. **Rectangles** = zones colorées.
-- **Ligne du milieu** (50 %) en pointillés : activable.
+- **Ligne du milieu** (50 %) en pointillés : désactivée par défaut.
 - **Traits** : épaisseur réglable.
 - **Étiquettes** : taille et transparence réglables.
-- **Tableau** : affichable ou non.
+- **Tableau** : affichable ou non, avec une **légende** des symboles en dessous.
 
 **② Order Blocks**
 - **OB** : affichés ou non.
 - **Sens** : OB acheteurs et OB vendeurs, une case pour chacun.
 - **Unités de temps** : 3m, 5m, 15m, 4H, Daily, Weekly, une case pour chacune.
-- **Étoiles** : une case par note. 5 ★, 4 ★ et 3 ★ sont cochées par défaut ; 2 ★, 1 ★ et 0 ★ (**non validés**) sont décochées.
+- **Étoiles** : une case par note. Seules 5 ★ et 4 ★ sont cochées par défaut, pour un graphique propre ; 3 ★, 2 ★, 1 ★ et 0 ★ (**non validés**) sont décochées.
 
 **③ POI (points d'intérêt multi-UT)**
 - **Définition** : un POI est la zone où un OB d'une unité de temps se superpose à un OB d'une autre unité de temps, dans le même sens. Il prend les étoiles du meilleur des deux OB **+1 étoile bonus** (5 au maximum).
 - **POI** : affichés ou non.
 - **Unités de temps** : 5m, 15m, 4H, Daily, Weekly. L'unité de temps d'un POI est la plus grande des deux (un POI 15m+4H est un POI 4H).
-- **Étoiles** : une case par note, de 5 ★ à 1 ★. 1 ★ et 2 ★ sont les POI non validés.
+- **Étoiles** : une case par note, de 5 ★ à 1 ★ (5 ★ et 4 ★ cochées par défaut). 1 ★ et 2 ★ sont les POI non validés.
+- **Pas de doublons** : quand deux POI du même sens se chevauchent, seul le mieux noté est gardé. L'étiquette indique la plus grande des deux UT, par exemple `◆ POI 4H ★★★★★`.
 - **Construction** : les POI se forment à partir de tous les OB détectés, même ceux que tu as masqués.
 
 **④ Liquidité** : PDH / PDL (plus haut et plus bas de la veille) et PWH / PWL (plus haut et plus bas de la semaine dernière).
 
-**⑤ OB / POI cassés** : une zone cassée (une bougie clôture au travers) reste affichée en gris, ou est supprimée si tu décoches la case.
+**⑤ OB / POI cassés** : désactivé par défaut. Une zone cassée (une bougie clôture au travers) est supprimée. Si tu coches la case, elle reste affichée en petits points gris, sans étiquette.
 
 **⑥ Détection des OB**, **⑦ Couleurs** (tout est modifiable) et **⑧ Alertes**.
 
 ## Sur le graphique
 
-- **Étiquette** : par exemple `▲ OB 4H ★★★★☆` ou `◆ POI 15m+4H ★★★★★`. Passe la souris dessus pour voir les ✔ et les ✘.
+- **Étiquette** : par exemple `▲ 4H ★★★★☆` (OB acheteur 4H) ou `◆ POI 4H ★★★★★`. Passe la souris dessus pour voir le détail.
 - **Trait plein** : zone jamais touchée.
 - **Pointillés** : zone déjà touchée.
 - **Petits points gris** : zone cassée.
