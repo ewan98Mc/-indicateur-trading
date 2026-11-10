@@ -1,69 +1,57 @@
-# SMC ★ Tout-en-un : Order Blocks et POI notés de 1 à 5 étoiles
+# OB ★ : Order Blocks notés de 1 à 5 étoiles
 
-Indicateur TradingView (Pine Script v6) qui rassemble tout dans **un seul indicateur**,
-pratique avec la version gratuite de TradingView (nombre d'indicateurs limité).
-Chaque outil s'active ou se désactive dans les réglages.
+Indicateur TradingView (Pine Script v6) **simple** : il repère les **order blocks** en
+**3m, 5m, 15m, 4H, Daily et Weekly**, leur donne une note de **1 à 5 étoiles**,
+et affiche les niveaux **PDH / PDL** et **PWH / PWL**.
 
-## Les étoiles des Order Blocks
+## Les étoiles
 
-Un OB est détecté en **3m, 5m, 15m, 4H, Daily et Weekly** et gagne **une étoile par confluence** :
+Un OB gagne **une étoile par confluence** :
 
 | ★ | Confluence | Signification |
 |---|------------|---------------|
 | 1 | **Déplacement** | L'impulsion qui part de l'OB est forte : son corps fait au moins 1,5 fois l'ATR |
 | 2 | **BOS** | L'impulsion casse le dernier sommet (OB acheteur) ou le dernier creux (OB vendeur) |
 | 3 | **Sweep liquidité** | La bougie de l'OB prend le plus bas ou le plus haut des 20 dernières bougies |
-| 4 | **Discount / Premium** | L'OB acheteur est sous le 50 % du dernier range, l'OB vendeur au-dessus |
+| 4 | **Discount / Premium** | L'OB acheteur est sous le 50 % du range, l'OB vendeur au-dessus |
 | 5 | **Tendance** | L'OB est dans le sens de l'EMA 200 de son unité de temps |
 
-- **5 ★** : toutes les confluences, affiché en doré.
-- **0 à 2 ★** : OB **non validé**.
+**5 ★** = toutes les confluences, affiché en doré. **0 à 2 ★** = OB **non validé**.
 
 ## Les réglages
 
-**① Affichage général**
-- **Zones proches du prix uniquement** (activé par défaut) : les OB et POI trop éloignés du prix actuel sont masqués. Ils réapparaissent quand le prix s'en rapproche. La distance se règle en **ATR journalier** (3 par défaut, soit environ 3 journées moyennes de mouvement).
-- **Longueur des traits** : **Courts** (par défaut, les traits commencent juste avant le prix) ou **Depuis la bougie de l'OB**.
-- **Zones les plus proches dans le tableau** : la zone acheteuse la plus proche sous le prix et la zone vendeuse la plus proche au-dessus, avec leur prix et la distance en %.
-- **Style des zones** : **Traits** (par défaut) = une ligne en haut et une ligne en bas de chaque zone. **Rectangles** = zones colorées.
-- **Ligne du milieu** (50 %) en pointillés : désactivée par défaut.
-- **Traits** : épaisseur réglable.
-- **Étiquettes** : taille et transparence réglables.
-- **Tableau** : affichable ou non, avec une **légende** des symboles en dessous.
+**① Unités de temps des OB** : une case pour chaque unité de temps (3m, 5m, 15m, 4H, Daily, Weekly).
 
-**② Order Blocks**
-- **OB** : affichés ou non.
-- **Sens** : OB acheteurs et OB vendeurs, une case pour chacun.
-- **Unités de temps** : 3m, 5m, 15m, 4H, Daily, Weekly, une case pour chacune.
-- **Étoiles** : une case par note. Seules 5 ★ et 4 ★ sont cochées par défaut, pour un graphique propre ; 3 ★, 2 ★, 1 ★ et 0 ★ (**non validés**) sont décochées.
+**② OB à afficher**
+- OB acheteurs ▲ / OB vendeurs ▼.
+- Une case par note : 5 ★, 4 ★ et 3 ★ cochées par défaut ; 2 ★, 1 ★ et 0 ★ (non validés) décochées.
+- Nombre maximum d'OB par unité de temps et par sens (2 par défaut).
+- **Seulement les OB proches du prix** : les OB trop loin sont masqués. La distance se règle en ATR journalier (3 par défaut).
 
-**③ POI (points d'intérêt multi-UT)**
-- **Définition** : un POI est la zone où un OB d'une unité de temps se superpose à un OB d'une autre unité de temps, dans le même sens. Il prend les étoiles du meilleur des deux OB **+1 étoile bonus** (5 au maximum).
-- **POI** : affichés ou non.
-- **Unités de temps** : 5m, 15m, 4H, Daily, Weekly. L'unité de temps d'un POI est la plus grande des deux (un POI 15m+4H est un POI 4H).
-- **Étoiles** : une case par note, de 5 ★ à 1 ★ (5 ★ et 4 ★ cochées par défaut). 1 ★ et 2 ★ sont les POI non validés.
-- **Pas de doublons** : quand deux POI du même sens se chevauchent, seul le mieux noté est gardé. L'étiquette indique la plus grande des deux UT, par exemple `◆ POI 4H ★★★★★`.
-- **Construction** : les POI se forment à partir de tous les OB détectés, même ceux que tu as masqués.
+**③ OB cassés**
+- **Un OB est cassé quand** : une bougie clôture au travers (par défaut), une mèche traverse tout l'OB, ou le prix dépasse 50 % de l'OB.
+- **Garder les OB cassés à l'écran** : décoché par défaut, un OB cassé disparaît tout seul. Coché, il reste en gris pointillé.
 
-**④ Liquidité** : PDH / PDL (plus haut et plus bas de la veille) et PWH / PWL (plus haut et plus bas de la semaine dernière).
+**④ Style**
+- **Style des OB** :
+  - **Un seul trait** (par défaut) : le graphique le plus propre.
+  - **Deux traits** : le haut et le bas de l'OB.
+  - **Rectangle rempli**.
+- **Position du trait unique** : **Bord d'entrée** (le haut d'un OB acheteur, le bas d'un OB vendeur, là où le prix le touche en premier) ou **Milieu de l'OB**.
+- **Tous les OB d'une seule couleur** : par exemple en noir.
+- Épaisseur des traits, transparence des rectangles, longueur des traits (courts près du prix ou depuis la bougie de l'OB), étiquettes, taille du texte, tableau.
 
-**⑤ OB / POI cassés ou non respectés** : les zones disparaissent toutes seules.
-- **« Un OB / POI disparaît quand »** :
-  - **Clôture au travers** (par défaut) : une bougie clôture de l'autre côté de la zone, l'OB est cassé.
-  - **Mèche au travers** : une mèche traverse toute la zone.
-  - **Le prix dépasse 50 % de la zone** : le prix rentre jusqu'au milieu sans réagir, l'OB n'est pas respecté.
-- **« Faire disparaître un OB / POI dès qu'il a été touché »** : décoché par défaut. Coché, chaque zone ne sert qu'une fois (l'alerte est quand même envoyée).
-- **« Garder les OB / POI cassés à l'écran »** : décoché par défaut. Coché, les zones cassées restent en petits points gris, sans étiquette.
+**⑤ Liquidité** : PDH / PDL (plus haut et plus bas de la veille) et PWH / PWL (plus haut et plus bas de la semaine dernière).
 
-**⑥ Détection des OB**, **⑦ Couleurs** (tout est modifiable) et **⑧ Alertes**.
+**⑥ Couleurs**, **⑦ Détection (avancé)** et **⑧ Alertes**.
 
 ## Sur le graphique
 
-- **Étiquette** : par exemple `▲ 4H ★★★★☆` (OB acheteur 4H) ou `◆ POI 4H ★★★★★`. Passe la souris dessus pour voir le détail.
-- **Trait plein** : zone jamais touchée.
-- **Pointillés** : zone déjà touchée.
-- **Petits points gris** : zone cassée.
-- **Unités de temps plus petites que ton graphique** : elles ne sont pas affichées. Pour tout voir, utilise un graphique en 1m ou 3m.
+- **Étiquette** : par exemple `▲ 4H ★★★★★` (OB acheteur 4H, 5 étoiles). Passe la souris dessus pour voir la zone de prix et les confluences ✔ / ✘.
+- **Trait plein** : OB jamais touché.
+- **Tirets** : OB déjà touché.
+- **Tableau** : le meilleur OB acheteur et vendeur pas encore touché, pour chaque unité de temps.
+- **Unités de temps plus petites que ton graphique** : elles affichent `off`. Pour tout voir, mets ton graphique en 3m ou en 1m.
 
 ## Installation
 
@@ -73,8 +61,8 @@ Un OB est détecté en **3m, 5m, 15m, 4H, Daily et Weekly** et gagne **une étoi
 
 ## Alertes
 
-- `OB/POI acheteur 5★ touché` et `OB/POI vendeur 5★ touché`.
-- `OB touché (étoiles min)` et `POI touché (étoiles min)` : se déclenchent à partir de 4 ★ par défaut. Tu peux changer ce minimum dans les réglages.
+- `OB acheteur 5★ touché` et `OB vendeur 5★ touché`.
+- `OB touché (étoiles min)` : à partir de 4 ★ par défaut. Tu peux changer ce minimum dans les réglages.
 - **N'importe quel appel de fonction alert()** : message détaillé avec le ticker, les étoiles, l'unité de temps et la zone de prix.
 
 > ⚠️ Les étoiles mesurent la **confluence**, elles ne garantissent pas un rebond. Garde toujours ta propre analyse et ta gestion du risque.
