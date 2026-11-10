@@ -18,14 +18,15 @@ indicator("SMC ★ Tout-en-un — OB · POI", shorttitle = "SMC ★", overlay = 
 // ① Affichage général
 grpGen     = "① Affichage général"
 drawMode   = input.string("Traits", "Style des zones", options = ["Traits", "Rectangles"], group = grpGen, tooltip = "Traits = une ligne en haut et une ligne en bas de chaque zone (graphique épuré). Rectangles = zones colorées.")
-showMid    = input.bool(true, "Ligne du milieu (50 %) en pointillés", group = grpGen)
+showMid    = input.bool(false, "Ligne du milieu (50 %) en pointillés", group = grpGen)
 lineW      = input.int(2, "Épaisseur des traits", minval = 1, maxval = 5, group = grpGen)
 fillTransp = input.int(85, "Transparence des rectangles (%)", minval = 0, maxval = 100, group = grpGen)
 showLbl    = input.bool(true, "Afficher les étiquettes", group = grpGen)
 showDet    = input.bool(false, "Écrire les confluences sur l'étiquette des OB", group = grpGen, tooltip = "Désactivé : les confluences s'affichent quand tu passes la souris sur l'étiquette.")
-txtSizeIn  = input.string("Normal", "Taille du texte", options = ["Petit", "Normal", "Grand"], group = grpGen)
+txtSizeIn  = input.string("Petit", "Taille du texte", options = ["Petit", "Normal", "Grand"], group = grpGen)
 lblTransp  = input.int(0, "Transparence des étiquettes (%)", minval = 0, maxval = 100, group = grpGen)
 showTable  = input.bool(true, "Afficher le tableau", group = grpGen)
+showLegend = input.bool(true, "Afficher la légende sous le tableau", group = grpGen)
 
 // ② Order Blocks
 grpOB    = "② Order Blocks"
@@ -40,11 +41,11 @@ obD      = input.bool(true, "Daily",  inline = "ob2", group = grpOB)
 obW      = input.bool(true, "Weekly", inline = "ob2", group = grpOB)
 show5    = input.bool(true,  "5 ★", inline = "ob3", group = grpOB)
 show4    = input.bool(true,  "4 ★", inline = "ob3", group = grpOB)
-show3    = input.bool(true,  "3 ★", inline = "ob3", group = grpOB)
+show3    = input.bool(false, "3 ★", inline = "ob3", group = grpOB)
 show2    = input.bool(false, "2 ★ (non validé)", inline = "ob4", group = grpOB)
 show1    = input.bool(false, "1 ★ (non validé)", inline = "ob4", group = grpOB)
 show0    = input.bool(false, "0 ★ (non validé)", inline = "ob5", group = grpOB, tooltip = "Un OB non validé a moins de 3 confluences. Coche ce que tu veux voir, décoche le reste.")
-maxPerTF = input.int(3, "OB max par UT et par sens", minval = 1, maxval = 10, group = grpOB)
+maxPerTF = input.int(2, "OB max par UT et par sens", minval = 1, maxval = 10, group = grpOB)
 
 // ③ POI
 grpPoi  = "③ POI (points d'intérêt multi-UT)"
@@ -56,10 +57,10 @@ poiTFD  = input.bool(true, "Daily",  inline = "pt2", group = grpPoi)
 poiTFW  = input.bool(true, "Weekly", inline = "pt2", group = grpPoi, tooltip = "Unité de temps du POI = la plus grande des deux UT qui se superposent (ex : POI 15m+4H = POI 4H).")
 poi5    = input.bool(true,  "5 ★", inline = "p1", group = grpPoi)
 poi4    = input.bool(true,  "4 ★", inline = "p1", group = grpPoi)
-poi3    = input.bool(true,  "3 ★", inline = "p1", group = grpPoi)
+poi3    = input.bool(false, "3 ★", inline = "p1", group = grpPoi)
 poi2    = input.bool(false, "2 ★ (non validé)", inline = "p2", group = grpPoi)
 poi1    = input.bool(false, "1 ★ (non validé)", inline = "p2", group = grpPoi)
-maxPoi  = input.int(5, "POI max par sens", minval = 1, maxval = 20, group = grpPoi)
+maxPoi  = input.int(3, "POI max par sens", minval = 1, maxval = 20, group = grpPoi)
 
 // ④ Liquidité
 grpLiq    = "④ Liquidité"
@@ -68,8 +69,8 @@ showPWHL  = input.bool(true, "Plus haut / plus bas de la semaine dernière (PWH 
 
 // ⑤ OB / POI cassés
 grpBrk     = "⑤ OB / POI cassés"
-showBroken = input.bool(true, "Afficher les OB / POI cassés (en gris)", group = grpBrk, tooltip = "Un OB acheteur cassé devient souvent une résistance, un OB vendeur cassé un support (breaker block).")
-maxBroken  = input.int(10, "Nombre max d'OB / POI cassés affichés", minval = 1, maxval = 50, group = grpBrk)
+showBroken = input.bool(false, "Afficher les OB / POI cassés (en gris)", group = grpBrk, tooltip = "Un OB acheteur cassé devient souvent une résistance, un OB vendeur cassé un support (breaker block).")
+maxBroken  = input.int(5, "Nombre max d'OB / POI cassés affichés", minval = 1, maxval = 50, group = grpBrk)
 
 // ⑥ Détection des OB
 grpDet   = "⑥ Détection des OB"
@@ -306,14 +307,26 @@ prune(array<Zone> arr, bool bull, string tfName, int maxN) =>
                 arr.remove(i)
 
 // ═════════════════════════════ OB ET POI ═════════════════════════════
-addPOI(float top, float bot, int left, int stars, bool bull, string name, int rank) =>
-    color c = bull ? colPoiBull : colPoiBear
-    Zone z = Zone.new(top = top, bot = bot, left = left, bull = bull, stars = stars, tf = name, rank = rank, touched = false, shown = true)
-    zFill(z, left, c, lineW + 1)
-    string tip = "POI " + (bull ? "ACHETEUR" : "VENDEUR") + " multi-UT : les OB " + name + " se superposent ici.\nPlusieurs unités de temps montrent des ordres importants au même endroit."
-    z.lb := zLabel("◆ POI " + name + " " + starStr(stars) + (stars < 3 ? " non validé" : ""), tip, (top + bot) / 2, c, txtCol, txtSize)
-    pois.push(z)
-    prune(pois, bull, "", maxPoi)
+addPOI(float top, float bot, int left, int stars, bool bull, string name, string tfBig, int rank) =>
+    // pas de doublon : si un POI du même sens chevauche déjà cette zone, on garde le mieux noté
+    bool skip = false
+    if pois.size() > 0
+        for i = pois.size() - 1 to 0
+            Zone p = pois.get(i)
+            if p.bull == bull and p.top >= bot and p.bot <= top
+                if p.stars >= stars
+                    skip := true
+                else
+                    zDelete(p)
+                    pois.remove(i)
+    if not skip
+        color c = bull ? colPoiBull : colPoiBear
+        Zone z = Zone.new(top = top, bot = bot, left = left, bull = bull, stars = stars, tf = tfBig, rank = rank, touched = false, shown = true)
+        zFill(z, left, c, lineW + 1)
+        string tip = "POI " + (bull ? "ACHETEUR" : "VENDEUR") + " " + starStr(stars) + "\nLes OB " + name + " se superposent ici :\nplusieurs unités de temps montrent des ordres importants au même endroit."
+        z.lb := zLabel("◆ POI " + tfBig + " " + starStr(stars) + (stars < 3 ? " non validé" : ""), tip, (top + bot) / 2, c, txtCol, txtSize)
+        pois.push(z)
+        prune(pois, bull, "", maxPoi)
 
 addOB(float top, float bot, int t, int mask, bool bull, string tfName, int rank, bool display) =>
     int  stars = countStars(mask)
@@ -322,7 +335,7 @@ addOB(float top, float bot, int t, int mask, bool bull, string tfName, int rank,
     if shown
         color  c   = stars == 5 ? col5 : bull ? colBull : colBear
         string det = detTxt(mask, bull)
-        string txt = (bull ? "▲ OB " : "▼ OB ") + tfName + " " + starStr(stars) + (stars < 3 ? " non validé" : "") + (showDet ? "\n" + det : "")
+        string txt = (bull ? "▲ " : "▼ ") + tfName + " " + starStr(stars) + (stars < 3 ? " non validé" : "") + (showDet ? "\n" + det : "")
         zFill(z, t, c, stars == 5 ? lineW + 1 : lineW)
         z.lb := zLabel(txt, (bull ? "OB ACHETEUR " : "OB VENDEUR ") + tfName + " " + starStr(stars) + "\n" + det, (top + bot) / 2, c, stars == 5 ? txtCol5 : txtCol, txtSize)
     obs.push(z)
@@ -338,7 +351,7 @@ addOB(float top, float bot, int t, int mask, bool bull, string tfName, int rank,
                 int    pStars = math.min(5, math.max(o.stars, stars) + 1)
                 string pName  = o.rank < rank ? o.tf + "+" + tfName : tfName + "+" + o.tf
                 if pTop > pBot and poiAllowed(pStars) and poiTFAllowed(pRank)
-                    addPOI(pTop, pBot, math.max(t, o.left), pStars, bull, pName, pRank)
+                    addPOI(pTop, pBot, math.max(t, o.left), pStars, bull, pName, o.rank > rank ? o.tf : tfName, pRank)
     stars
 
 // Non repaint : dernière bougie CLÔTURÉE de l'UT demandée
@@ -381,7 +394,8 @@ processZones(array<Zone> arr, string prefix) =>
                     zColor(o, colBroken)
                     zStyle(o, line.style_dotted)
                     if not na(o.lb)
-                        o.lb.set_text("✖ " + prefix + o.tf + " " + starStr(o.stars) + " cassé")
+                        o.lb.delete()
+                        o.lb := na
                     broken.push(o)
                     if broken.size() > maxBroken
                         zDelete(broken.shift())
@@ -447,16 +461,16 @@ bestStars(string tfName, bool bull) =>
                 best := o.stars
     best
 
-var table tbl = table.new(position.top_right, 3, 7, bgcolor = color.new(color.black, 20), border_color = color.new(color.gray, 60), border_width = 1)
+var table tbl = table.new(position.top_right, 3, 13, bgcolor = color.new(#131722, 0), border_color = color.new(color.gray, 70), border_width = 1, frame_color = color.new(color.gray, 50), frame_width = 1)
 
 fillRow(int row, string tfName, bool usable) =>
     table.cell(tbl, 0, row, tfName, text_color = color.white, text_size = size.small)
     int bu = usable ? bestStars(tfName, true)  : -1
     int be = usable ? bestStars(tfName, false) : -1
-    string tu = not usable ? "off" : bu < 0 ? "—" : starStr(bu)
-    string te = not usable ? "off" : be < 0 ? "—" : starStr(be)
-    table.cell(tbl, 1, row, tu, text_color = not usable ? color.gray : bu == 5 ? col5 : colBull, text_size = size.small)
-    table.cell(tbl, 2, row, te, text_color = not usable ? color.gray : be == 5 ? col5 : colBear, text_size = size.small)
+    string tu = not usable ? "off" : bu < 0 ? "aucun" : starStr(bu)
+    string te = not usable ? "off" : be < 0 ? "aucun" : starStr(be)
+    table.cell(tbl, 1, row, tu, text_color = not usable ? color.new(color.gray, 30) : bu == 5 ? col5 : colBull, text_size = size.small)
+    table.cell(tbl, 2, row, te, text_color = not usable ? color.new(color.gray, 30) : be == 5 ? col5 : colBear, text_size = size.small)
 
 if showTable and barstate.islast
     table.cell(tbl, 0, 0, "UT",          text_color = color.white, text_size = size.small)
@@ -468,3 +482,16 @@ if showTable and barstate.islast
     fillRow(4, "4H",  ok4h)
     fillRow(5, "D",   okD)
     fillRow(6, "W",   okW)
+    if showLegend
+        table.cell(tbl, 0, 7,  "LÉGENDE", text_color = color.white, text_size = size.small)
+        table.merge_cells(tbl, 0, 7, 2, 7)
+        table.cell(tbl, 0, 8,  "▲ OB acheteur   ▼ OB vendeur", text_color = color.white, text_size = size.small, text_halign = text.align_left)
+        table.merge_cells(tbl, 0, 8, 2, 8)
+        table.cell(tbl, 0, 9,  "◆ POI = OB de 2 UT superposés", text_color = colPoiBull, text_size = size.small, text_halign = text.align_left)
+        table.merge_cells(tbl, 0, 9, 2, 9)
+        table.cell(tbl, 0, 10, "★★★★★ = 5 confluences (doré)", text_color = col5, text_size = size.small, text_halign = text.align_left)
+        table.merge_cells(tbl, 0, 10, 2, 10)
+        table.cell(tbl, 0, 11, "Trait plein = jamais touché", text_color = color.white, text_size = size.small, text_halign = text.align_left)
+        table.merge_cells(tbl, 0, 11, 2, 11)
+        table.cell(tbl, 0, 12, "Tirets = déjà touché", text_color = color.white, text_size = size.small, text_halign = text.align_left)
+        table.merge_cells(tbl, 0, 12, 2, 12)
