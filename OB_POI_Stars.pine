@@ -1,0 +1,240 @@
+//@version=6
+// ═══════════════════════════════════════════════════════════════════════════════
+//  OB POI ★ — Multi-Timeframe Order Blocks rated from 1 to 5 stars
+//
+//  Each Order Block (OB) gets one star per confluence:
+//    ★ DISP  : Displacement  — the impulse candle body is ≥ X × ATR
+//    ★ FVG   : Fair Value Gap — the impulse left an imbalance (gap) behind it
+//    ★ BOS   : Break Of Structure — the move broke the last swing high / low
+//    ★ SWEEP : Liquidity sweep — the OB candle took out the recent highs / lows
+//    ★ TREND : Trend alignment — price is on the right side of the trend EMA
+//
+//  5 ★ = every confluence present = highest-probability POI for a bounce.
+//  Timeframes: 3m · 5m · 15m · 4H · Daily · Weekly (only TFs ≥ chart TF are shown)
+//  Non-repainting: OBs are only confirmed on closed candles of their timeframe.
+// ═══════════════════════════════════════════════════════════════════════════════
+indicator("OB POI ★ — Multi-TF Order Blocks", shorttitle = "OB POI ★", overlay = true, max_boxes_count = 500, max_labels_count = 500)
+
+// ─────────────────────────────── Inputs ───────────────────────────────
+grpTF = "Timeframes"
+use3  = input.bool(true, "3 min",  inline = "t1", group = grpTF)
+use5  = input.bool(true, "5 min",  inline = "t1", group = grpTF)
+use15 = input.bool(true, "15 min", inline = "t1", group = grpTF)
+use4h = input.bool(true, "4 H",    inline = "t2", group = grpTF)
+useD  = input.bool(true, "Daily",  inline = "t2", group = grpTF)
+useW  = input.bool(true, "Weekly", inline = "t2", group = grpTF)
+
+grpDet   = "Detection"
+zoneMode = input.string("Wick", "OB zone", options = ["Wick", "Body"], group = grpDet, tooltip = "Wick = full candle range (high–low). Body = open–close only (tighter zone).")
+dispMult = input.float(1.5, "Displacement: impulse body ≥ x ATR", minval = 0.1, step = 0.1, group = grpDet)
+atrLen   = input.int(14, "ATR length", minval = 1, group = grpDet)
+swingLen = input.int(5, "Swing length (BOS)", minval = 2, group = grpDet, tooltip = "Bars on each side used to confirm a swing high / low.")
+sweepLen = input.int(20, "Liquidity sweep lookback", minval = 3, group = grpDet, tooltip = "The OB candle must take out the lowest low (bullish) / highest high (bearish) of this many previous bars.")
+emaLen   = input.int(200, "Trend EMA length", minval = 10, group = grpDet)
+invMode  = input.string("Close", "Invalidate OB on", options = ["Close", "Wick"], group = grpDet, tooltip = "Close = a candle closes through the OB. Wick = price simply trades through it.")
+
+grpDisp   = "Display"
+minStars  = input.int(3, "Show OBs with at least (stars)", minval = 0, maxval = 5, group = grpDisp)
+maxPerTF  = input.int(3, "Max active OBs per TF and side", minval = 1, maxval = 10, group = grpDisp)
+showDet   = input.bool(true, "Show confluence details on the box", group = grpDisp)
+showTable = input.bool(true, "Show summary table", group = grpDisp)
+colBull   = input.color(color.new(#089981, 0), "Bullish OB", inline = "c", group = grpDisp)
+colBear   = input.color(color.new(#F23645, 0), "Bearish OB", inline = "c", group = grpDisp)
+col5      = input.color(color.new(#FFC107, 0), "5 ★ OB",     inline = "c", group = grpDisp)
+
+grpAl         = "Alerts"
+alertMinStars = input.int(4, "Alert when price touches an OB with at least (stars)", minval = 0, maxval = 5, group = grpAl)
+
+// ─────────────────────────────── Helpers ───────────────────────────────
+starStr(int n) =>
+    string s = ""
+    for i = 1 to 5
+        s += i <= n ? "★" : "☆"
+    s
+
+// Runs inside request.security() on each timeframe.
+// Candle [2] = OB candle, candle [1] = impulse, candle [0] = confirmation (FVG check).
+// Returns the LAST bullish and LAST bearish OB detected, shifted by `off` bars.
+obDetect(int off) =>
+    float atr        = ta.atr(atrLen)
+    float ema        = ta.ema(close, emaLen)
+    float ph         = ta.pivothigh(high, swingLen, swingLen)
+    float pl         = ta.pivotlow(low, swingLen, swingLen)
+    float lowestPrev  = ta.lowest(low, sweepLen)
+    float highestPrev = ta.highest(high, sweepLen)
+
+    var float swingHigh = na
+    var float swingLow  = na
+    if not na(ph)
+        swingHigh := ph
+    if not na(pl)
+        swingLow := pl
+
+    // ── Bullish OB: last bearish candle before a bullish impulse
+    bool bullBase = close[2] < open[2] and close[1] > open[1] and close[1] > high[2]
+    bool bDisp    = (close[1] - open[1]) >= dispMult * atr[1]
+    bool bFvg     = low > high[2]
+    bool bBos     = not na(swingHigh[2]) and math.max(close[1], close) > swingHigh[2]
+    bool bSweep   = not na(lowestPrev[3]) and low[2] < lowestPrev[3]
+    bool bTrend   = close > ema
+
+    // ── Bearish OB: last bullish candle before a bearish impulse
+    bool bearBase = close[2] > open[2] and close[1] < open[1] and close[1] < low[2]
+    bool sDisp    = (open[1] - close[1]) >= dispMult * atr[1]
+    bool sFvg     = high < low[2]
+    bool sBos     = not na(swingLow[2]) and math.min(close[1], close) < swingLow[2]
+    bool sSweep   = not na(highestPrev[3]) and high[2] > highestPrev[3]
+    bool sTrend   = close < ema
+
+    var float  bTop = na
+    var float  bBot = na
+    var int    bTm  = 0
+    var int    bSc  = 0
+    var string bDt  = ""
+    var float  sTop = na
+    var float  sBot = na
+    var int    sTm  = 0
+    var int    sSc  = 0
+    var string sDt  = ""
+
+    if bullBase
+        bTop := zoneMode == "Wick" ? high[2] : math.max(open[2], close[2])
+        bBot := zoneMode == "Wick" ? low[2]  : math.min(open[2], close[2])
+        bTm  := time[2]
+        bSc  := (bDisp ? 1 : 0) + (bFvg ? 1 : 0) + (bBos ? 1 : 0) + (bSweep ? 1 : 0) + (bTrend ? 1 : 0)
+        bDt  := (bDisp ? "DISP " : "") + (bFvg ? "FVG " : "") + (bBos ? "BOS " : "") + (bSweep ? "SWEEP " : "") + (bTrend ? "TREND" : "")
+
+    if bearBase
+        sTop := zoneMode == "Wick" ? high[2] : math.max(open[2], close[2])
+        sBot := zoneMode == "Wick" ? low[2]  : math.min(open[2], close[2])
+        sTm  := time[2]
+        sSc  := (sDisp ? 1 : 0) + (sFvg ? 1 : 0) + (sBos ? 1 : 0) + (sSweep ? 1 : 0) + (sTrend ? 1 : 0)
+        sDt  := (sDisp ? "DISP " : "") + (sFvg ? "FVG " : "") + (sBos ? "BOS " : "") + (sSweep ? "SWEEP " : "") + (sTrend ? "TREND" : "")
+
+    [bTop[off], bBot[off], bTm[off], bSc[off], bDt[off], sTop[off], sBot[off], sTm[off], sSc[off], sDt[off]]
+
+// Non-repainting fetch: always uses the last CLOSED candle of the requested timeframe.
+fetchOB(simple string tf) =>
+    bool same = timeframe.in_seconds(tf) == timeframe.in_seconds()
+    request.security(syminfo.tickerid, tf, obDetect(1), lookahead = same ? barmerge.lookahead_off : barmerge.lookahead_on)
+
+// ─────────────────────────────── OB storage ───────────────────────────────
+type OB
+    box    bx
+    float  top
+    float  bot
+    bool   bull
+    int    stars
+    string tf
+    bool   touched
+
+var array<OB> obs = array.new<OB>()
+
+boxColor(bool bull, int stars) =>
+    stars == 5 ? col5 : bull ? colBull : colBear
+
+addOB(float top, float bot, int t, int stars, string det, bool bull, string tfName) =>
+    color  c   = boxColor(bull, stars)
+    string txt = tfName + " " + starStr(stars) + (showDet and str.length(det) > 0 ? "\n" + str.trim(det) : "")
+    box bx = box.new(t, top, time, bot, xloc = xloc.bar_time, border_color = c, border_width = stars == 5 ? 2 : 1, bgcolor = color.new(c, 88 - stars * 6), text = txt, text_color = color.new(c, 0), text_size = size.small, text_halign = text.align.right, text_valign = text.align.center)
+    obs.push(OB.new(bx, top, bot, bull, stars, tfName, false))
+    // keep only the newest `maxPerTF` OBs for this TF and side
+    int cnt = 0
+    for i = obs.size() - 1 to 0
+        OB o = obs.get(i)
+        if o.tf == tfName and o.bull == bull
+            cnt += 1
+            if cnt > maxPerTF
+                o.bx.delete()
+                obs.remove(i)
+
+handleTF(simple string tf, string tfName, bool enabled) =>
+    [bT, bB, bTm, bS, bD, sT, sB, sTm, sS, sD] = fetchOB(tf)
+    bool usable = enabled and timeframe.in_seconds(tf) >= timeframe.in_seconds()
+    bool newBull = bTm > 0 and bTm != nz(bTm[1])
+    bool newBear = sTm > 0 and sTm != nz(sTm[1])
+    if usable and newBull and bS >= minStars and not na(bT)
+        addOB(bT, bB, bTm, bS, bD, true, tfName)
+    if usable and newBear and sS >= minStars and not na(sT)
+        addOB(sT, sB, sTm, sS, sD, false, tfName)
+    usable
+
+// ─────────────────────────────── Main ───────────────────────────────
+ok3  = handleTF("3",   "3m",  use3)
+ok5  = handleTF("5",   "5m",  use5)
+ok15 = handleTF("15",  "15m", use15)
+ok4h = handleTF("240", "4H",  use4h)
+okD  = handleTF("D",   "D",   useD)
+okW  = handleTF("W",   "W",   useW)
+
+bool touch5Bull   = false
+bool touch5Bear   = false
+bool touchMinBull = false
+bool touchMinBear = false
+
+if obs.size() > 0
+    for i = obs.size() - 1 to 0
+        OB o = obs.get(i)
+        bool broken = o.bull ? (invMode == "Close" ? close < o.bot : low < o.bot) : (invMode == "Close" ? close > o.top : high > o.top)
+        if broken
+            o.bx.delete()
+            obs.remove(i)
+        else
+            bool inZone = o.bull ? low <= o.top : high >= o.bot
+            if inZone and not o.touched
+                // First touch of a fresh OB = the reaction we are looking for
+                o.touched := true
+                o.bx.set_border_style(line.style_dashed)
+                if o.stars >= alertMinStars
+                    if o.bull
+                        touchMinBull := true
+                    else
+                        touchMinBear := true
+                    alert(syminfo.ticker + " — price touched a " + starStr(o.stars) + " " + (o.bull ? "BULLISH" : "BEARISH") + " OB [" + o.tf + "] " + str.tostring(o.bot, format.mintick) + " – " + str.tostring(o.top, format.mintick), alert.freq_once_per_bar)
+                if o.stars == 5
+                    if o.bull
+                        touch5Bull := true
+                    else
+                        touch5Bear := true
+            if barstate.islast
+                o.bx.set_right(time + 10 * (time - time[1]))
+
+alertcondition(touch5Bull, "5★ bullish OB touched", "{{ticker}}: price touched a 5★ BULLISH order block")
+alertcondition(touch5Bear, "5★ bearish OB touched", "{{ticker}}: price touched a 5★ BEARISH order block")
+alertcondition(touchMinBull or touchMinBear, "OB touched (min stars)", "{{ticker}}: price touched a high-rated order block")
+
+// ─────────────────────────────── Summary table ───────────────────────────────
+bestStars(string tfName, bool bull) =>
+    int best = -1
+    if obs.size() > 0
+        for o in obs
+            if o.tf == tfName and o.bull == bull and not o.touched and o.stars > best
+                best := o.stars
+    best
+
+cellTxt(int s) =>
+    s < 0 ? "—" : starStr(s)
+
+var table tbl = table.new(position.top_right, 3, 7, bgcolor = color.new(color.black, 20), border_color = color.new(color.gray, 60), border_width = 1)
+
+fillRow(int row, string tfName, bool usable) =>
+    table.cell(tbl, 0, row, tfName, text_color = color.white, text_size = size.small)
+    if usable
+        int bu = bestStars(tfName, true)
+        int be = bestStars(tfName, false)
+        table.cell(tbl, 1, row, cellTxt(bu), text_color = bu == 5 ? col5 : colBull, text_size = size.small)
+        table.cell(tbl, 2, row, cellTxt(be), text_color = be == 5 ? col5 : colBear, text_size = size.small)
+    else
+        table.cell(tbl, 1, row, "off", text_color = color.gray, text_size = size.small)
+        table.cell(tbl, 2, row, "off", text_color = color.gray, text_size = size.small)
+
+if showTable and barstate.islast
+    table.cell(tbl, 0, 0, "TF",              text_color = color.white, text_size = size.small)
+    table.cell(tbl, 1, 0, "Fresh bull OB",   text_color = colBull,     text_size = size.small)
+    table.cell(tbl, 2, 0, "Fresh bear OB",   text_color = colBear,     text_size = size.small)
+    fillRow(1, "3m",  ok3)
+    fillRow(2, "5m",  ok5)
+    fillRow(3, "15m", ok15)
+    fillRow(4, "4H",  ok4h)
+    fillRow(5, "D",   okD)
+    fillRow(6, "W",   okW)
