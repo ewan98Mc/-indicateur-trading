@@ -98,7 +98,10 @@ txtCol5     = input.color(color.black, "Texte 5 ★",        inline = "c9", grou
 alertMinStars = input.int(4, "Alerte si le prix touche un OB / POI d'au moins (étoiles)", minval = 0, maxval = 5, group = "⑧ Alertes")
 
 txtSize = txtSizeIn == "Petit" ? size.small : txtSizeIn == "Grand" ? size.large : size.normal
-int futureT = time + 10 * (time - nz(time[1], time))
+int barMs   = time - nz(time[1], time)
+int futureT = time + 4 * barMs    // étiquettes des OB
+int futureL = time + 18 * barMs   // étiquettes PDH / PDL / PWH / PWL
+int futureP = time + 22 * barMs   // étiquettes des POI, plus à droite pour ne pas cacher les OB
 
 // ═════════════════════════════ FONCTIONS ═════════════════════════════
 starStr(int n) =>
@@ -324,7 +327,7 @@ addPOI(float top, float bot, int left, int stars, bool bull, string name, string
     if not skip
         color c = bull ? colPoiBull : colPoiBear
         Zone z = Zone.new(top = top, bot = bot, left = left, bull = bull, stars = stars, tf = tfBig, rank = rank, touched = false, shown = true)
-        zFill(z, left, c, lineW + 1)
+        zFill(z, left, color.new(c, 20), lineW)
         string tip = "POI " + (bull ? "ACHETEUR" : "VENDEUR") + " " + starStr(stars) + "\nLes OB " + name + " se superposent ici :\nplusieurs unités de temps montrent des ordres importants au même endroit."
         z.lb := zLabel("◆ POI " + tfBig + " " + starStr(stars) + (stars < 3 ? " non validé" : ""), tip, (top + bot) / 2, c, txtCol, txtSize)
         pois.push(z)
@@ -337,7 +340,7 @@ addOB(float top, float bot, int t, int mask, bool bull, string tfName, int rank,
     if shown
         color  c   = stars == 5 ? col5 : bull ? colBull : colBear
         string det = detTxt(mask, bull)
-        string txt = (bull ? "▲ " : "▼ ") + tfName + " " + starStr(stars) + (stars < 3 ? " non validé" : "") + (showDet ? "\n" + det : "")
+        string txt = (bull ? "▲ OB " : "▼ OB ") + tfName + " " + starStr(stars) + (stars < 3 ? " non validé" : "") + (showDet ? "\n" + det : "")
         zFill(z, t, c, stars == 5 ? lineW + 1 : lineW)
         z.lb := zLabel(txt, (bull ? "OB ACHETEUR " : "OB VENDEUR ") + tfName + " " + starStr(stars) + "\n" + det, (top + bot) / 2, c, stars == 5 ? txtCol5 : txtCol, txtSize)
     obs.push(z)
@@ -426,7 +429,7 @@ processZones(array<Zone> arr, string prefix) =>
                     zDelete(o)
                     arr.remove(i)
                 else if barstate.islast and o.shown
-                    zRight(o, futureT)
+                    zRight(o, prefix == "POI " ? futureP : futureT)
     [t5b, t5s, tMin, tBull, tBear]
 
 [ob5Bull, ob5Bear, obMin, obTBull, obTBear]       = processZones(obs, "OB ")
@@ -443,8 +446,8 @@ drawLevel(bool show, float price, int x1, string txt) =>
         line.delete(ln)
         label.delete(lb)
         if show and not na(price)
-            ln := line.new(x1, price, futureT, price, xloc = xloc.bar_time, color = colLiq, style = line.style_dashed, width = 1)
-            lb := label.new(futureT, price, txt, xloc = xloc.bar_time, style = label.style_label_left, color = color.new(colLiq, lblTransp), textcolor = txtCol, size = size.small, tooltip = "Niveau de liquidité : beaucoup de stops sont placés ici.")
+            ln := line.new(x1, price, futureL, price, xloc = xloc.bar_time, color = colLiq, style = line.style_dashed, width = 1)
+            lb := label.new(futureL, price, txt, xloc = xloc.bar_time, style = label.style_label_left, color = color.new(colLiq, lblTransp), textcolor = txtCol, size = size.small, tooltip = "Niveau de liquidité : beaucoup de stops sont placés ici.")
 
 drawLevel(showPDHL, pdh, dStart, "PDH")
 drawLevel(showPDHL, pdl, dStart, "PDL")
