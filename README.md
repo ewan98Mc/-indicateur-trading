@@ -22,6 +22,9 @@ Un OB est détecté en **3m, 5m, 15m, 4H, Daily et Weekly** et gagne **une étoi
 ## Les réglages
 
 **① Affichage général**
+- **Zones proches du prix uniquement** (activé par défaut) : les OB et POI trop éloignés du prix actuel sont masqués. Ils réapparaissent quand le prix s'en rapproche. La distance se règle en **ATR journalier** (3 par défaut, soit environ 3 journées moyennes de mouvement).
+- **Longueur des traits** : **Courts** (par défaut, les traits commencent juste avant le prix) ou **Depuis la bougie de l'OB**.
+- **Zones les plus proches dans le tableau** : la zone acheteuse la plus proche sous le prix et la zone vendeuse la plus proche au-dessus, avec leur prix et la distance en %.
 - **Style des zones** : **Traits** (par défaut) = une ligne en haut et une ligne en bas de chaque zone. **Rectangles** = zones colorées.
 - **Ligne du milieu** (50 %) en pointillés : désactivée par défaut.
 - **Traits** : épaisseur réglable.

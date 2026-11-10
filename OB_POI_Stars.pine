@@ -18,6 +18,9 @@ indicator("SMC ★ Tout-en-un — OB · POI", shorttitle = "SMC ★", overlay = 
 // ① Affichage général
 grpGen     = "① Affichage général"
 drawMode   = input.string("Traits", "Style des zones", options = ["Traits", "Rectangles"], group = grpGen, tooltip = "Traits = une ligne en haut et une ligne en bas de chaque zone (graphique épuré). Rectangles = zones colorées.")
+useDist    = input.bool(true, "Afficher seulement les zones proches du prix", group = grpGen, tooltip = "Les OB / POI trop loin du prix actuel sont masqués (ils réapparaissent quand le prix s'en rapproche).")
+distAtr    = input.float(3.0, "Distance max du prix (x ATR journalier)", minval = 0.5, step = 0.5, group = grpGen, tooltip = "ATR journalier = mouvement moyen d'une journée. 3 = on affiche les zones à moins de 3 journées moyennes de mouvement du prix.")
+lineLen    = input.string("Courts (près du prix)", "Longueur des traits", options = ["Courts (près du prix)", "Depuis la bougie de l'OB"], group = grpGen, tooltip = "Courts = les traits commencent juste avant le prix actuel (graphique propre).\nDepuis la bougie de l'OB = les traits partent de la bougie qui a créé la zone.")
 showMid    = input.bool(false, "Ligne du milieu (50 %) en pointillés", group = grpGen)
 lineW      = input.int(2, "Épaisseur des traits", minval = 1, maxval = 5, group = grpGen)
 fillTransp = input.int(85, "Transparence des rectangles (%)", minval = 0, maxval = 100, group = grpGen)
@@ -26,6 +29,7 @@ showDet    = input.bool(false, "Écrire les confluences sur l'étiquette des OB"
 txtSizeIn  = input.string("Petit", "Taille du texte", options = ["Petit", "Normal", "Grand"], group = grpGen)
 lblTransp  = input.int(0, "Transparence des étiquettes (%)", minval = 0, maxval = 100, group = grpGen)
 showTable  = input.bool(true, "Afficher le tableau", group = grpGen)
+showNear   = input.bool(true, "Afficher les zones les plus proches dans le tableau", group = grpGen)
 showLegend = input.bool(true, "Afficher la légende sous le tableau", group = grpGen)
 
 // ② Order Blocks
@@ -102,6 +106,8 @@ int barMs   = time - nz(time[1], time)
 int futureT = time + 4 * barMs    // étiquettes des OB
 int futureL = time + 18 * barMs   // étiquettes PDH / PDL / PWH / PWL
 int futureP = time + 22 * barMs   // étiquettes des POI, plus à droite pour ne pas cacher les OB
+int shortL  = time - 15 * barMs   // début des traits courts
+float dAtr  = request.security(syminfo.tickerid, "D", ta.atr(14)[1], lookahead = barmerge.lookahead_on)
 
 // ═════════════════════════════ FONCTIONS ═════════════════════════════
 starStr(int n) =>
@@ -221,6 +227,9 @@ type Zone
     int    rank
     bool   touched
     bool   shown
+    color  col
+    color  lcol
+    color  tcol
 
 zDraw(int left, float top, float bot, color c, int w) =>
     box  bx  = na
@@ -288,6 +297,32 @@ zDelete(Zone z) =>
     if not na(z.lb)
         z.lb.delete()
 
+zLeft(Zone z, int x) =>
+    if not na(z.bx)
+        z.bx.set_left(x)
+    if not na(z.lt)
+        z.lt.set_x1(x)
+    if not na(z.lbt)
+        z.lbt.set_x1(x)
+    if not na(z.lm)
+        z.lm.set_x1(x)
+
+// rend une zone visible ou invisible (sans la supprimer)
+zShow(Zone z, bool v) =>
+    color c = v ? z.col : color.new(z.col, 100)
+    if not na(z.bx)
+        z.bx.set_border_color(c)
+        z.bx.set_bgcolor(color.new(z.col, v ? fillTransp : 100))
+    if not na(z.lt)
+        z.lt.set_color(c)
+    if not na(z.lbt)
+        z.lbt.set_color(c)
+    if not na(z.lm)
+        z.lm.set_color(color.new(z.col, v ? 30 : 100))
+    if not na(z.lb)
+        z.lb.set_color(v ? z.lcol : color.new(z.lcol, 100))
+        z.lb.set_textcolor(v ? z.tcol : color.new(z.tcol, 100))
+
 zFill(Zone z, int left, color c, int w) =>
     [bx, lt, lbt, lm] = zDraw(left, z.top, z.bot, c, w)
     z.bx  := bx
@@ -328,6 +363,9 @@ addPOI(float top, float bot, int left, int stars, bool bull, string name, string
         color c = bull ? colPoiBull : colPoiBear
         Zone z = Zone.new(top = top, bot = bot, left = left, bull = bull, stars = stars, tf = tfBig, rank = rank, touched = false, shown = true)
         zFill(z, left, color.new(c, 20), lineW)
+        z.col  := color.new(c, 20)
+        z.lcol := color.new(c, lblTransp)
+        z.tcol := txtCol
         string tip = "POI " + (bull ? "ACHETEUR" : "VENDEUR") + " " + starStr(stars) + "\nLes OB " + name + " se superposent ici :\nplusieurs unités de temps montrent des ordres importants au même endroit."
         z.lb := zLabel("◆ POI " + tfBig + " " + starStr(stars) + (stars < 3 ? " non validé" : ""), tip, (top + bot) / 2, c, txtCol, txtSize)
         pois.push(z)
@@ -342,6 +380,9 @@ addOB(float top, float bot, int t, int mask, bool bull, string tfName, int rank,
         string det = detTxt(mask, bull)
         string txt = (bull ? "▲ OB " : "▼ OB ") + tfName + " " + starStr(stars) + (stars < 3 ? " non validé" : "") + (showDet ? "\n" + det : "")
         zFill(z, t, c, stars == 5 ? lineW + 1 : lineW)
+        z.col  := c
+        z.lcol := color.new(c, lblTransp)
+        z.tcol := stars == 5 ? txtCol5 : txtCol
         z.lb := zLabel(txt, (bull ? "OB ACHETEUR " : "OB VENDEUR ") + tfName + " " + starStr(stars) + "\n" + det, (top + bot) / 2, c, stars == 5 ? txtCol5 : txtCol, txtSize)
     obs.push(z)
     prune(obs, bull, tfName, shown ? maxPerTF : 5, shown)
@@ -430,6 +471,10 @@ processZones(array<Zone> arr, string prefix) =>
                     arr.remove(i)
                 else if barstate.islast and o.shown
                     zRight(o, prefix == "POI " ? futureP : futureT)
+                    if lineLen == "Courts (près du prix)"
+                        zLeft(o, math.max(o.left, shortL))
+                    float dist = close > o.top ? close - o.top : close < o.bot ? o.bot - close : 0.0
+                    zShow(o, not useDist or na(dAtr) or dist <= distAtr * dAtr)
     [t5b, t5s, tMin, tBull, tBear]
 
 [ob5Bull, ob5Bear, obMin, obTBull, obTBear]       = processZones(obs, "OB ")
@@ -470,8 +515,33 @@ bestStars(string tfName, bool bull) =>
                 best := o.stars
     best
 
+// zone la plus proche du prix (acheteuse en dessous / vendeuse au-dessus)
+scanNear(array<Zone> arr, bool bull, string kind) =>
+    float  bd = na
+    float  bp = na
+    string bt = ""
+    if arr.size() > 0
+        for i = 0 to arr.size() - 1
+            Zone o = arr.get(i)
+            if o.shown and o.bull == bull
+                float d = math.max(0.0, bull ? close - o.top : o.bot - close)
+                if na(bd) or d < bd
+                    bd := d
+                    bp := bull ? o.top : o.bot
+                    bt := kind + o.tf + " " + starStr(o.stars)
+    [bd, bp, bt]
+
+nearTxt(bool bull) =>
+    [d1, p1, t1] = scanNear(obs, bull, "OB ")
+    [d2, p2, t2] = scanNear(pois, bull, "POI ")
+    bool   useOb = not na(d1) and (na(d2) or d1 <= d2)
+    float  d     = useOb ? d1 : d2
+    float  pr    = useOb ? p1 : p2
+    string t     = useOb ? t1 : t2
+    na(d) ? "aucune" : t + "  " + str.tostring(pr, format.mintick) + "  (" + str.tostring(d / close * 100, "#.##") + " %)"
+
 var bool legendMerged = false
-var table tbl = table.new(position.top_right, 3, 13, bgcolor = color.new(#131722, 0), border_color = color.new(color.gray, 70), border_width = 1, frame_color = color.new(color.gray, 50), frame_width = 1)
+var table tbl = table.new(position.top_right, 3, 15, bgcolor = color.new(#131722, 0), border_color = color.new(color.gray, 70), border_width = 1, frame_color = color.new(color.gray, 50), frame_width = 1)
 
 fillRow(int row, string tfName, bool usable) =>
     table.cell(tbl, 0, row, tfName, text_color = color.white, text_size = size.small)
@@ -492,15 +562,24 @@ if showTable and barstate.islast
     fillRow(4, "4H",  ok4h)
     fillRow(5, "D",   okD)
     fillRow(6, "W",   okW)
+    if showNear
+        table.cell(tbl, 0, 7, "Achat ▲", text_color = colBull, text_size = size.small)
+        table.cell(tbl, 1, 7, nearTxt(true), text_color = color.white, text_size = size.small, text_halign = text.align_left, tooltip = "Zone acheteuse la plus proche sous le prix (prix du haut de la zone et distance).")
+        table.cell(tbl, 0, 8, "Vente ▼", text_color = colBear, text_size = size.small)
+        table.cell(tbl, 1, 8, nearTxt(false), text_color = color.white, text_size = size.small, text_halign = text.align_left, tooltip = "Zone vendeuse la plus proche au-dessus du prix (prix du bas de la zone et distance).")
     if showLegend
-        table.cell(tbl, 0, 7,  "LÉGENDE", text_color = color.white, text_size = size.small)
-        table.cell(tbl, 0, 8,  "▲ OB acheteur   ▼ OB vendeur", text_color = color.white, text_size = size.small, text_halign = text.align_left)
-        table.cell(tbl, 0, 9,  "◆ POI = OB de 2 UT superposés", text_color = colPoiBull, text_size = size.small, text_halign = text.align_left)
-        table.cell(tbl, 0, 10, "★★★★★ = 5 confluences (doré)", text_color = col5, text_size = size.small, text_halign = text.align_left)
-        table.cell(tbl, 0, 11, "Trait plein = jamais touché", text_color = color.white, text_size = size.small, text_halign = text.align_left)
-        table.cell(tbl, 0, 12, "Tirets = déjà touché", text_color = color.white, text_size = size.small, text_halign = text.align_left)
-        // fusion des cellules de la légende une seule fois
-        if not legendMerged
-            for r = 7 to 12
+        table.cell(tbl, 0, 9,  "LÉGENDE", text_color = color.white, text_size = size.small)
+        table.cell(tbl, 0, 10, "▲ OB acheteur   ▼ OB vendeur", text_color = color.white, text_size = size.small, text_halign = text.align_left)
+        table.cell(tbl, 0, 11, "◆ POI = OB de 2 UT superposés", text_color = colPoiBull, text_size = size.small, text_halign = text.align_left)
+        table.cell(tbl, 0, 12, "★★★★★ = 5 confluences (doré)", text_color = col5, text_size = size.small, text_halign = text.align_left)
+        table.cell(tbl, 0, 13, "Trait plein = jamais touché", text_color = color.white, text_size = size.small, text_halign = text.align_left)
+        table.cell(tbl, 0, 14, "Tirets = déjà touché", text_color = color.white, text_size = size.small, text_halign = text.align_left)
+    // fusion des cellules une seule fois
+    if not legendMerged
+        if showNear
+            table.merge_cells(tbl, 1, 7, 2, 7)
+            table.merge_cells(tbl, 1, 8, 2, 8)
+        if showLegend
+            for r = 9 to 14
                 table.merge_cells(tbl, 0, r, 2, r)
-            legendMerged := true
+        legendMerged := true
