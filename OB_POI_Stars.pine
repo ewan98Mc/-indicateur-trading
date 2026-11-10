@@ -296,11 +296,12 @@ var array<Zone> pois   = array.new<Zone>()
 var array<Zone> broken = array.new<Zone>()
 
 // garde au maximum `maxN` zones d'un même sens (et d'une même UT si tfName n'est pas vide)
-prune(array<Zone> arr, bool bull, string tfName, int maxN) =>
+// les zones affichées et les zones masquées sont comptées séparément
+prune(array<Zone> arr, bool bull, string tfName, int maxN, bool shownFlag) =>
     int cnt = 0
     for i = arr.size() - 1 to 0
         Zone o = arr.get(i)
-        if o.bull == bull and (tfName == "" or o.tf == tfName)
+        if o.bull == bull and o.shown == shownFlag and (tfName == "" or o.tf == tfName)
             cnt += 1
             if cnt > maxN
                 zDelete(o)
@@ -326,7 +327,7 @@ addPOI(float top, float bot, int left, int stars, bool bull, string name, string
         string tip = "POI " + (bull ? "ACHETEUR" : "VENDEUR") + " " + starStr(stars) + "\nLes OB " + name + " se superposent ici :\nplusieurs unités de temps montrent des ordres importants au même endroit."
         z.lb := zLabel("◆ POI " + tfBig + " " + starStr(stars) + (stars < 3 ? " non validé" : ""), tip, (top + bot) / 2, c, txtCol, txtSize)
         pois.push(z)
-        prune(pois, bull, "", maxPoi)
+        prune(pois, bull, "", maxPoi, true)
 
 addOB(float top, float bot, int t, int mask, bool bull, string tfName, int rank, bool display) =>
     int  stars = countStars(mask)
@@ -339,7 +340,7 @@ addOB(float top, float bot, int t, int mask, bool bull, string tfName, int rank,
         zFill(z, t, c, stars == 5 ? lineW + 1 : lineW)
         z.lb := zLabel(txt, (bull ? "OB ACHETEUR " : "OB VENDEUR ") + tfName + " " + starStr(stars) + "\n" + det, (top + bot) / 2, c, stars == 5 ? txtCol5 : txtCol, txtSize)
     obs.push(z)
-    prune(obs, bull, tfName, maxPerTF)
+    prune(obs, bull, tfName, shown ? maxPerTF : 5, shown)
     // POI : cet OB se superpose à un OB d'une autre UT dans le même sens
     if showPoi
         for j = 0 to obs.size() - 1
