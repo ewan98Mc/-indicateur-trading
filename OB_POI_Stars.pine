@@ -68,8 +68,10 @@ showPDHL  = input.bool(true, "Plus haut / plus bas de la veille (PDH / PDL)", gr
 showPWHL  = input.bool(true, "Plus haut / plus bas de la semaine dernière (PWH / PWL)", group = grpLiq)
 
 // ⑤ OB / POI cassés
-grpBrk     = "⑤ OB / POI cassés"
-showBroken = input.bool(false, "Afficher les OB / POI cassés (en gris)", group = grpBrk, tooltip = "Un OB acheteur cassé devient souvent une résistance, un OB vendeur cassé un support (breaker block).")
+grpBrk     = "⑤ OB / POI cassés ou non respectés"
+invMode    = input.string("Clôture au travers", "Un OB / POI disparaît quand", options = ["Clôture au travers", "Mèche au travers", "Le prix dépasse 50 % de la zone"], group = grpBrk, tooltip = "Clôture au travers = une bougie clôture de l'autre côté de la zone (cassé).\nMèche au travers = une mèche traverse toute la zone.\n50 % = le prix entre jusqu'au milieu de la zone sans réagir : la zone n'est pas respectée.")
+delTouch   = input.bool(false, "Faire disparaître un OB / POI dès qu'il a été touché", group = grpBrk, tooltip = "Coché : une zone ne sert qu'une fois. Dès que le prix la touche, elle disparaît (l'alerte est quand même envoyée).")
+showBroken = input.bool(false, "Garder les OB / POI cassés à l'écran (en gris)", group = grpBrk, tooltip = "Décoché (par défaut) : les zones cassées ou non respectées disparaissent toutes seules.\nCoché : elles restent en petits points gris. Un OB acheteur cassé devient souvent une résistance, un OB vendeur cassé un support (breaker block).")
 maxBroken  = input.int(5, "Nombre max d'OB / POI cassés affichés", minval = 1, maxval = 50, group = grpBrk)
 
 // ⑥ Détection des OB
@@ -80,7 +82,6 @@ atrLen   = input.int(14, "Longueur ATR", minval = 1, group = grpDet)
 swingLen = input.int(5, "Longueur swing (BOS)", minval = 2, group = grpDet)
 sweepLen = input.int(20, "Recul prise de liquidité", minval = 3, group = grpDet)
 emaLen   = input.int(200, "Longueur EMA tendance", minval = 10, group = grpDet)
-invMode  = input.string("Clôture", "OB / POI invalidé par", options = ["Clôture", "Mèche"], group = grpDet)
 
 // ⑦ Couleurs
 grpCol      = "⑦ Couleurs"
@@ -386,7 +387,8 @@ processZones(array<Zone> arr, string prefix) =>
     if arr.size() > 0
         for i = arr.size() - 1 to 0
             Zone o = arr.get(i)
-            bool isBroken = o.bull ? (invMode == "Clôture" ? close < o.bot : low < o.bot) : (invMode == "Clôture" ? close > o.top : high > o.top)
+            float mid      = (o.top + o.bot) / 2
+            bool  isBroken = invMode == "Clôture au travers" ? (o.bull ? close < o.bot : close > o.top) : invMode == "Mèche au travers" ? (o.bull ? low < o.bot : high > o.top) : (o.bull ? low < mid : high > mid)
             if isBroken
                 arr.remove(i)
                 if o.shown and showBroken
@@ -420,7 +422,10 @@ processZones(array<Zone> arr, string prefix) =>
                                 t5b := true
                             else
                                 t5s := true
-                if barstate.islast and o.shown
+                if delTouch and o.touched
+                    zDelete(o)
+                    arr.remove(i)
+                else if barstate.islast and o.shown
                     zRight(o, futureT)
     [t5b, t5s, tMin, tBull, tBear]
 

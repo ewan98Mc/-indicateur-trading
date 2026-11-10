@@ -44,7 +44,13 @@ Un OB est détecté en **3m, 5m, 15m, 4H, Daily et Weekly** et gagne **une étoi
 
 **④ Liquidité** : PDH / PDL (plus haut et plus bas de la veille) et PWH / PWL (plus haut et plus bas de la semaine dernière).
 
-**⑤ OB / POI cassés** : désactivé par défaut. Une zone cassée (une bougie clôture au travers) est supprimée. Si tu coches la case, elle reste affichée en petits points gris, sans étiquette.
+**⑤ OB / POI cassés ou non respectés** : les zones disparaissent toutes seules.
+- **« Un OB / POI disparaît quand »** :
+  - **Clôture au travers** (par défaut) : une bougie clôture de l'autre côté de la zone, l'OB est cassé.
+  - **Mèche au travers** : une mèche traverse toute la zone.
+  - **Le prix dépasse 50 % de la zone** : le prix rentre jusqu'au milieu sans réagir, l'OB n'est pas respecté.
+- **« Faire disparaître un OB / POI dès qu'il a été touché »** : décoché par défaut. Coché, chaque zone ne sert qu'une fois (l'alerte est quand même envoyée).
+- **« Garder les OB / POI cassés à l'écran »** : décoché par défaut. Coché, les zones cassées restent en petits points gris, sans étiquette.
 
 **⑥ Détection des OB**, **⑦ Couleurs** (tout est modifiable) et **⑧ Alertes**.
 
