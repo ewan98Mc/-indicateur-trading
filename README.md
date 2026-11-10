@@ -1,77 +1,57 @@
-# OB POI ★: Multi-Timeframe Order Blocks rated from 1 to 5 stars
+# OB POI ★ : Order Blocks multi-unités de temps notés de 1 à 5 étoiles
 
-A TradingView indicator (Pine Script v6) that finds **Order Blocks (OB)** on
-**3m, 5m, 15m, 4H, Daily and Weekly** and gives each one a **1 to 5 star rating**.
-The more stars an OB has, the more confluences it has and the more likely the
-market is to react (bounce) when price comes back to it.
+Indicateur TradingView (Pine Script v6) **100 % Order Blocks / POI**, sans FVG ni IFVG.
+Il détecte les Order Blocks en **3m, 5m, 15m, 4H, Daily et Weekly** et donne à chacun
+une note de **1 à 5 étoiles**. Plus l'OB a d'étoiles, plus le prix a de chances de rebondir dessus.
 
-## How the stars work
+## Les 5 étoiles
 
-Each OB earns **one star per confluence**:
+Chaque OB gagne **une étoile par confluence** :
 
-| ★ | Tag     | Meaning |
-|---|---------|---------|
-| 1 | `DISP`  | **Displacement**: the impulse candle body is ≥ 1.5 × ATR (strong institutional move) |
-| 2 | `FVG`   | **Fair Value Gap**: the impulse left an imbalance (gap) behind it |
-| 3 | `BOS`   | **Break of Structure**: the move broke the last swing high (bull) or swing low (bear) |
-| 4 | `SWEEP` | **Liquidity sweep**: the OB candle took out the lowest low / highest high of the last 20 bars |
-| 5 | `TREND` | **Trend alignment**: price is above (bull) or below (bear) the 200 EMA of that timeframe |
+| ★ | Confluence | Signification |
+|---|------------|---------------|
+| 1 | **Déplacement** | L'impulsion qui part de l'OB est forte : son corps fait au moins 1,5 fois l'ATR |
+| 2 | **BOS** | L'impulsion casse le dernier sommet (OB haussier) ou le dernier creux (OB baissier) |
+| 3 | **Sweep liquidité** | La bougie de l'OB prend le plus bas ou le plus haut des 20 dernières bougies |
+| 4 | **Discount / Premium** | L'OB haussier est sous le 50 % du dernier range, l'OB baissier au-dessus |
+| 5 | **Tendance** | L'OB est dans le sens de l'EMA 200 de son unité de temps |
 
-**5 ★ = all confluences present = the strongest POI.** 5-star boxes are drawn in gold with a thicker border.
+**5 ★ = toutes les confluences = POI le plus fort**, affiché en doré.
 
-Detection logic, per timeframe:
-- **Bullish OB**: the last *bearish* candle before a bullish candle that closes above its high.
-- **Bearish OB**: the last *bullish* candle before a bearish candle that closes below its low.
+- **OB haussier** : la dernière bougie baissière avant une bougie haussière qui clôture au-dessus de son plus haut.
+- **OB baissier** : la dernière bougie haussière avant une bougie baissière qui clôture sous son plus bas.
 
-## On the chart
+## Sur le graphique
 
-- Each box is labelled with its timeframe and rating, e.g. `4H ★★★★★` and the confluences it has (`DISP FVG BOS SWEEP TREND`).
-- **Solid border**: a fresh OB, never touched. This is the one that has the best chance of a bounce.
-- **Dashed border**: price has already touched it once.
-- A box is removed when a candle **closes through it** (you can switch this to "Mèche" in the settings).
-- **Summary table** (top right): the best *fresh* bullish and bearish OB on each timeframe.
-- Timeframes **lower** than your chart timeframe show as `off`. For example, on a 15m chart the 3m and 5m OBs aren't shown. To see every timeframe, use a 3m chart.
+- **Étiquette** à droite de chaque zone, par exemple `▲ 4H ★★★★☆`. Le texte est écrit sur un fond plein pour rester lisible.
+- **Détail des confluences** : passe la souris sur l'étiquette pour voir les ✔ et les ✘. Tu peux aussi les écrire directement sur l'étiquette dans les réglages.
+- **Bordure pleine** : OB jamais touché. C'est lui qui a le plus de chances de faire rebondir le prix.
+- **Bordure en pointillés** : le prix l'a déjà touché une fois.
+- **Suppression** : la zone disparaît quand une bougie clôture à travers elle (ou quand une mèche la traverse, selon le réglage).
+- **Tableau en haut à droite** : le meilleur OB haussier et baissier pas encore touché, pour chaque unité de temps.
+- **Unités de temps plus petites que ton graphique** : elles affichent `off`. Pour voir les 6 unités de temps, mets ton graphique en 3m.
+- **Non repaint** : un OB n'apparaît qu'une fois la bougie de son unité de temps clôturée.
 
-## Non-repainting
+## Couleurs (réglages ⚙, onglet « Couleurs »)
 
-Higher-timeframe OBs are only confirmed once the candle on *their* timeframe
-has closed (`request.security` with `[1]` + `lookahead_on`), so a box never
-appears and then disappears afterwards.
+- **Zones** : couleur de l'OB haussier, de l'OB baissier et de l'OB 5 ★.
+- **Fond de la zone** : sa transparence, de 0 à 100 %.
+- **Bordure** : son épaisseur.
+- **Texte de l'étiquette** : sa couleur, avec une couleur à part pour les 5 ★.
+- **Étiquette** : sa transparence et la taille du texte (Petit, Normal ou Grand).
 
-## Install on TradingView
+## Installation
 
-1. Open TradingView, then **Pine Editor** (bottom of the screen).
-2. Delete the default code and paste in the contents of [`OB_POI_Stars.pine`](OB_POI_Stars.pine).
-3. Click **Save**, then **Add to chart**.
-4. Open the settings (⚙) to change the timeframes, the minimum stars shown, colours, and so on.
+1. Dans TradingView, ouvre le **Pine Editor**.
+2. Efface tout le code, puis colle le contenu de [`OB_POI_Stars.pine`](OB_POI_Stars.pine).
+3. Clique sur **Sauvegarder**, puis sur **Ajouter au graphique**.
 
-## Alerts
+## Alertes
 
-Right-click the chart, choose **Add alert**, and set the condition to **OB POI ★**. Then pick one of:
+Clic droit sur le graphique, choisis **Ajouter une alerte**, sélectionne la condition **OB POI ★**, puis l'une de ces alertes :
+
 - `OB haussier 5★ touché` / `OB baissier 5★ touché`
-- `OB touché (étoiles min)`: uses the "Alerte si le prix touche un OB d'au moins (étoiles)" setting, 4 by default
-- **Any alert() function call**: a detailed message with the ticker, rating, timeframe and price zone
+- `OB touché (étoiles min)` : se déclenche à partir de 4 ★ par défaut. Tu peux changer ce minimum dans les réglages.
+- **N'importe quel appel de fonction alert()** : message détaillé avec le ticker, les étoiles, l'unité de temps et la zone de prix.
 
-## Main settings (the indicator's settings are in French)
-
-| Setting | Default | Notes |
-|---------|---------|-------|
-| Afficher les OB d'au moins | 3 ★ | Set to 5 to see only the best POIs |
-| OB actifs max par UT et par sens | 3 | Keeps the chart clean |
-| Zone de l'OB | Mèche | `Corps` gives a tighter zone (open–close) |
-| Déplacement | 1.5 × ATR | Higher means stricter |
-| Longueur swing (BOS) | 5 | |
-| Recul prise de liquidité | 20 | |
-| Longueur EMA tendance | 200 | |
-
----
-
-### Résumé en français
-
-Indicateur TradingView qui détecte les **Order Blocks** en 3m, 5m, 15m, 4H, Daily et Weekly
-et leur donne une **note de 1 à 5 étoiles** (déplacement, FVG, cassure de structure,
-prise de liquidité, alignement avec la tendance EMA 200). **5 ★ = POI avec le plus de chances
-de rebond.** Un bord plein signale un OB jamais touché, un bord pointillé un OB déjà touché.
-Le tableau en haut à droite résume le meilleur OB frais de chaque unité de temps.
-
-> ⚠️ The stars measure **confluence**, not a guarantee. Always confirm with your own analysis and risk management.
+> ⚠️ Les étoiles mesurent la **confluence**, elles ne garantissent pas un rebond. Garde toujours ta propre analyse et ta gestion du risque.

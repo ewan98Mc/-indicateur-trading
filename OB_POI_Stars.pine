@@ -2,14 +2,14 @@
 // ═══════════════════════════════════════════════════════════════════
 //  OB POI ★ — Order Blocks multi-unités de temps notés de 1 à 5 étoiles
 //  1 étoile par confluence :
-//    DISP  = Déplacement (corps de l'impulsion ≥ X × ATR)
-//    FVG   = Fair Value Gap laissé par l'impulsion
-//    BOS   = Cassure du dernier sommet / creux (Break Of Structure)
-//    SWEEP = Prise de liquidité (la bougie OB prend le plus bas / plus haut récent)
-//    TREND = Dans le sens de la tendance (EMA 200)
+//    DÉPLACEMENT = impulsion forte après l'OB (corps ≥ X × ATR)
+//    BOS         = l'impulsion casse le dernier sommet / creux
+//    SWEEP       = la bougie OB prend la liquidité (plus bas / plus haut récent)
+//    DISCOUNT / PREMIUM = OB haussier sous le 50 % du range, OB baissier au-dessus
+//    TENDANCE    = OB dans le sens de la tendance (EMA 200)
 //  UT : 3m · 5m · 15m · 4H · Daily · Weekly — Non repaint
 // ═══════════════════════════════════════════════════════════════════
-indicator("OB POI ★ — Order Blocks Multi-UT", shorttitle = "OB POI ★", overlay = true, max_boxes_count = 500)
+indicator("OB POI ★ — Order Blocks Multi-UT", shorttitle = "OB POI ★", overlay = true, max_boxes_count = 500, max_labels_count = 500)
 
 // ───────────── Réglages ─────────────
 grpTF = "Unités de temps"
@@ -32,11 +32,21 @@ invMode  = input.string("Clôture", "OB invalidé par", options = ["Clôture", "
 grpDisp   = "Affichage"
 minStars  = input.int(3, "Afficher les OB d'au moins (étoiles)", minval = 0, maxval = 5, group = grpDisp)
 maxPerTF  = input.int(3, "OB actifs max par UT et par sens", minval = 1, maxval = 10, group = grpDisp)
-showDet   = input.bool(true, "Afficher les confluences dans la zone", group = grpDisp)
+showLbl   = input.bool(true, "Afficher l'étiquette (UT + étoiles)", group = grpDisp)
+showDet   = input.bool(false, "Écrire aussi les confluences sur l'étiquette", group = grpDisp, tooltip = "Désactivé : les confluences s'affichent quand tu passes la souris sur l'étiquette.")
 showTable = input.bool(true, "Afficher le tableau", group = grpDisp)
-colBull   = input.color(#089981, "OB haussier", inline = "c", group = grpDisp)
-colBear   = input.color(#F23645, "OB baissier", inline = "c", group = grpDisp)
-col5      = input.color(#FFC107, "OB 5 ★",      inline = "c", group = grpDisp)
+
+grpCol    = "Couleurs"
+colBull   = input.color(#089981, "OB haussier",  inline = "c1", group = grpCol)
+colBear   = input.color(#F23645, "OB baissier",  inline = "c1", group = grpCol)
+col5      = input.color(#FFC107, "OB 5 ★",       inline = "c1", group = grpCol)
+fillTransp = input.int(85, "Transparence du fond de la zone (%)", minval = 0, maxval = 100, group = grpCol)
+borderW   = input.int(1, "Épaisseur de la bordure", minval = 0, maxval = 4, group = grpCol)
+txtCol    = input.color(color.white, "Texte étiquette", inline = "c2", group = grpCol)
+txtCol5   = input.color(color.black, "Texte étiquette 5 ★", inline = "c2", group = grpCol)
+lblTransp = input.int(0, "Transparence de l'étiquette (%)", minval = 0, maxval = 100, group = grpCol)
+txtSizeIn = input.string("Normal", "Taille du texte", options = ["Petit", "Normal", "Grand"], group = grpCol)
+txtSize   = txtSizeIn == "Petit" ? size.small : txtSizeIn == "Grand" ? size.large : size.normal
 
 alertMinStars = input.int(4, "Alerte si le prix touche un OB d'au moins (étoiles)", minval = 0, maxval = 5, group = "Alertes")
 
@@ -47,24 +57,24 @@ starStr(int n) =>
         s := s + (i <= n ? "★" : "☆")
     s
 
-// masque : DISP = 1, FVG = 2, BOS = 4, SWEEP = 8, TREND = 16
+// masque : DÉPLACEMENT = 1, DISCOUNT/PREMIUM = 2, BOS = 4, SWEEP = 8, TENDANCE = 16
 hasBit(int m, int b) =>
     (m % (b * 2)) >= b
 
 countStars(int m) =>
     (hasBit(m, 1) ? 1 : 0) + (hasBit(m, 2) ? 1 : 0) + (hasBit(m, 4) ? 1 : 0) + (hasBit(m, 8) ? 1 : 0) + (hasBit(m, 16) ? 1 : 0)
 
-detTxt(int m) =>
+detTxt(int m, bool bull) =>
     string s = ""
-    s := s + (hasBit(m, 1)  ? "DISP "  : "")
-    s := s + (hasBit(m, 2)  ? "FVG "   : "")
-    s := s + (hasBit(m, 4)  ? "BOS "   : "")
-    s := s + (hasBit(m, 8)  ? "SWEEP " : "")
-    s := s + (hasBit(m, 16) ? "TREND"  : "")
+    s := s + (hasBit(m, 1)  ? "✔ Déplacement\n" : "✘ Déplacement\n")
+    s := s + (hasBit(m, 4)  ? "✔ BOS\n"         : "✘ BOS\n")
+    s := s + (hasBit(m, 8)  ? "✔ Sweep liquidité\n" : "✘ Sweep liquidité\n")
+    s := s + (hasBit(m, 2)  ? "✔ " : "✘ ") + (bull ? "Discount\n" : "Premium\n")
+    s := s + (hasBit(m, 16) ? "✔ Tendance" : "✘ Tendance")
     s
 
 // Exécutée sur chaque unité de temps via request.security()
-// Bougie [2] = OB, bougie [1] = impulsion, bougie [0] = confirmation (FVG)
+// Bougie [2] = OB, bougie [1] = impulsion
 obDetect() =>
     float atr         = ta.atr(atrLen)
     float ema         = ta.ema(close, emaLen)
@@ -85,12 +95,15 @@ obDetect() =>
     float lp3  = lowestPrev[3]
     float hp3  = highestPrev[3]
     float atr1 = atr[1]
+    float zTop = zoneMode == "Mèche" ? high[2] : math.max(open[2], close[2])
+    float zBot = zoneMode == "Mèche" ? low[2]  : math.min(open[2], close[2])
+    float zMid = (zTop + zBot) / 2
 
     // OB haussier : dernière bougie baissière avant une impulsion haussière
     bool bullBase = close[2] < open[2] and close[1] > open[1] and close[1] > high[2]
     int  bMask    = 0
     bMask += (close[1] - open[1]) >= dispMult * atr1 ? 1 : 0
-    bMask += low > high[2] ? 2 : 0
+    bMask += (not na(sh2)) and (not na(sl2)) and zMid < (sh2 + sl2) / 2 ? 2 : 0
     bMask += (not na(sh2)) and math.max(close[1], close) > sh2 ? 4 : 0
     bMask += (not na(lp3)) and low[2] < lp3 ? 8 : 0
     bMask += close > ema ? 16 : 0
@@ -99,13 +112,11 @@ obDetect() =>
     bool bearBase = close[2] > open[2] and close[1] < open[1] and close[1] < low[2]
     int  sMask    = 0
     sMask += (open[1] - close[1]) >= dispMult * atr1 ? 1 : 0
-    sMask += high < low[2] ? 2 : 0
+    sMask += (not na(sh2)) and (not na(sl2)) and zMid > (sh2 + sl2) / 2 ? 2 : 0
     sMask += (not na(sl2)) and math.min(close[1], close) < sl2 ? 4 : 0
     sMask += (not na(hp3)) and high[2] > hp3 ? 8 : 0
     sMask += close < ema ? 16 : 0
 
-    float zTop = zoneMode == "Mèche" ? high[2] : math.max(open[2], close[2])
-    float zBot = zoneMode == "Mèche" ? low[2]  : math.min(open[2], close[2])
     int   t2   = time[2]
 
     var float bTop = na
@@ -134,6 +145,7 @@ obDetect() =>
 // ───────────── Stockage des OB ─────────────
 type OB
     box    bx
+    label  lb
     float  top
     float  bot
     bool   bull
@@ -146,9 +158,13 @@ var array<OB> obs = array.new<OB>()
 addOB(float top, float bot, int t, int mask, bool bull, string tfName) =>
     int    stars = countStars(mask)
     color  c     = stars == 5 ? col5 : bull ? colBull : colBear
-    string txt   = tfName + " " + starStr(stars) + (showDet ? "\n" + detTxt(mask) : "")
-    box bx = box.new(t, top, time, bot, xloc = xloc.bar_time, border_color = c, border_width = stars == 5 ? 2 : 1, bgcolor = color.new(c, 88 - stars * 6), text = txt, text_color = c, text_size = size.small, text_halign = text.align_right, text_valign = text.align_center)
-    obs.push(OB.new(bx, top, bot, bull, stars, tfName, false))
+    string det   = detTxt(mask, bull)
+    string txt   = (bull ? "▲ " : "▼ ") + tfName + " " + starStr(stars) + (showDet ? "\n" + det : "")
+    box bx = box.new(t, top, time, bot, xloc = xloc.bar_time, border_color = c, border_width = stars == 5 ? borderW + 1 : borderW, bgcolor = color.new(c, fillTransp))
+    label lb = na
+    if showLbl
+        lb := label.new(time, (top + bot) / 2, txt, xloc = xloc.bar_time, style = label.style_label_left, color = color.new(c, lblTransp), textcolor = stars == 5 ? txtCol5 : txtCol, size = txtSize, tooltip = (bull ? "OB HAUSSIER " : "OB BAISSIER ") + tfName + " " + starStr(stars) + "\n" + det, textalign = text.align_left)
+    obs.push(OB.new(bx, lb, top, bot, bull, stars, tfName, false))
     // garder seulement les maxPerTF OB les plus récents pour cette UT et ce sens
     int cnt = 0
     for i = obs.size() - 1 to 0
@@ -157,6 +173,8 @@ addOB(float top, float bot, int t, int mask, bool bull, string tfName) =>
             cnt += 1
             if cnt > maxPerTF
                 o.bx.delete()
+                if not na(o.lb)
+                    o.lb.delete()
                 obs.remove(i)
     stars
 
@@ -193,6 +211,8 @@ if obs.size() > 0
         bool broken = o.bull ? (invMode == "Clôture" ? close < o.bot : low < o.bot) : (invMode == "Clôture" ? close > o.top : high > o.top)
         if broken
             o.bx.delete()
+            if not na(o.lb)
+                o.lb.delete()
             obs.remove(i)
         else
             bool inZone = o.bull ? low <= o.top : high >= o.bot
@@ -209,6 +229,8 @@ if obs.size() > 0
                         touch5Bear := true
             if barstate.islast
                 o.bx.set_right(futureT)
+                if not na(o.lb)
+                    o.lb.set_x(futureT)
 
 alertcondition(touch5Bull, "OB haussier 5★ touché", "{{ticker}} : le prix touche un OB HAUSSIER 5★")
 alertcondition(touch5Bear, "OB baissier 5★ touché", "{{ticker}} : le prix touche un OB BAISSIER 5★")
