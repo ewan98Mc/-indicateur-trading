@@ -1,85 +1,77 @@
 //@version=6
 // ═══════════════════════════════════════════════════════════════════════════
-//  SMC ★ TOUT-EN-UN — Order Blocks · POI · Liquidité
+//  OB ★ — Order Blocks notés de 1 à 5 étoiles
+//  Unités de temps : 3m · 5m · 15m · 4H · Daily · Weekly
 //
-//  ① Order Blocks notés de 1 à 5 étoiles (3m · 5m · 15m · 4H · Daily · Weekly)
-//     1 étoile par confluence : Déplacement · BOS · Sweep liquidité ·
-//     Discount/Premium · Tendance (EMA 200)
-//  ② POI multi-UT : OB de deux unités de temps qui se superposent (+1 étoile)
-//  ③ Liquidité : PDH/PDL, PWH/PWL
+//  1 étoile par confluence :
+//    Déplacement · BOS · Sweep liquidité · Discount/Premium · Tendance (EMA 200)
 //
-//  Affichage en traits (par défaut) ou en rectangles — tout s'active / se
-//  désactive dans les réglages. Non repaint.
+//  + PDH / PDL (veille) et PWH / PWL (semaine dernière)
+//  Style au choix : un seul trait, deux traits ou rectangle rempli. Non repaint.
 // ═══════════════════════════════════════════════════════════════════════════
-indicator("SMC ★ Tout-en-un — OB · POI", shorttitle = "SMC ★", overlay = true, max_boxes_count = 500, max_lines_count = 500, max_labels_count = 500)
+indicator("OB ★ — Order Blocks notés", shorttitle = "OB ★", overlay = true, max_boxes_count = 500, max_lines_count = 500, max_labels_count = 500)
 
 // ═════════════════════════════ RÉGLAGES ═════════════════════════════
 
-// ① Affichage général
-grpGen     = "① Affichage général"
-drawMode   = input.string("Traits", "Style des zones", options = ["Traits", "Rectangles"], group = grpGen, tooltip = "Traits = une ligne en haut et une ligne en bas de chaque zone (graphique épuré). Rectangles = zones colorées.")
-useDist    = input.bool(true, "Afficher seulement les zones proches du prix", group = grpGen, tooltip = "Les OB / POI trop loin du prix actuel sont masqués (ils réapparaissent quand le prix s'en rapproche).")
-distAtr    = input.float(3.0, "Distance max du prix (x ATR journalier)", minval = 0.5, step = 0.5, group = grpGen, tooltip = "ATR journalier = mouvement moyen d'une journée. 3 = on affiche les zones à moins de 3 journées moyennes de mouvement du prix.")
-lineLen    = input.string("Courts (près du prix)", "Longueur des traits", options = ["Courts (près du prix)", "Depuis la bougie de l'OB"], group = grpGen, tooltip = "Courts = les traits commencent juste avant le prix actuel (graphique propre).\nDepuis la bougie de l'OB = les traits partent de la bougie qui a créé la zone.")
-showMid    = input.bool(false, "Ligne du milieu (50 %) en pointillés", group = grpGen)
-lineW      = input.int(2, "Épaisseur des traits", minval = 1, maxval = 5, group = grpGen)
-fillTransp = input.int(85, "Transparence des rectangles (%)", minval = 0, maxval = 100, group = grpGen)
-showLbl    = input.bool(true, "Afficher les étiquettes", group = grpGen)
-showDet    = input.bool(false, "Écrire les confluences sur l'étiquette des OB", group = grpGen, tooltip = "Désactivé : les confluences s'affichent quand tu passes la souris sur l'étiquette.")
-txtSizeIn  = input.string("Petit", "Taille du texte", options = ["Petit", "Normal", "Grand"], group = grpGen)
-lblTransp  = input.int(0, "Transparence des étiquettes (%)", minval = 0, maxval = 100, group = grpGen)
-showTable  = input.bool(true, "Afficher le tableau", group = grpGen)
-showNear   = input.bool(true, "Afficher les zones les plus proches dans le tableau", group = grpGen)
-showLegend = input.bool(true, "Afficher la légende sous le tableau", group = grpGen)
+// ① Unités de temps
+grpTF = "① Unités de temps des OB"
+ob3   = input.bool(true, "3m",     inline = "t1", group = grpTF)
+ob5   = input.bool(true, "5m",     inline = "t1", group = grpTF)
+ob15  = input.bool(true, "15m",    inline = "t1", group = grpTF)
+ob4h  = input.bool(true, "4H",     inline = "t2", group = grpTF)
+obD   = input.bool(true, "Daily",  inline = "t2", group = grpTF)
+obW   = input.bool(true, "Weekly", inline = "t2", group = grpTF, tooltip = "Les unités de temps plus petites que celle de ton graphique ne peuvent pas s'afficher. Pour tout voir, mets ton graphique en 3m (ou 1m).")
 
-// ② Order Blocks
-grpOB    = "② Order Blocks"
-showOB   = input.bool(true, "Afficher les Order Blocks", group = grpOB)
-showBuy  = input.bool(true, "OB acheteurs (▲)", inline = "ob0", group = grpOB)
-showSell = input.bool(true, "OB vendeurs (▼)",  inline = "ob0", group = grpOB)
-ob3      = input.bool(true, "3m",     inline = "ob1", group = grpOB)
-ob5      = input.bool(true, "5m",     inline = "ob1", group = grpOB)
-ob15     = input.bool(true, "15m",    inline = "ob1", group = grpOB)
-ob4h     = input.bool(true, "4H",     inline = "ob2", group = grpOB)
-obD      = input.bool(true, "Daily",  inline = "ob2", group = grpOB)
-obW      = input.bool(true, "Weekly", inline = "ob2", group = grpOB)
-show5    = input.bool(true,  "5 ★", inline = "ob3", group = grpOB)
-show4    = input.bool(true,  "4 ★", inline = "ob3", group = grpOB)
-show3    = input.bool(false, "3 ★", inline = "ob3", group = grpOB)
-show2    = input.bool(false, "2 ★ (non validé)", inline = "ob4", group = grpOB)
-show1    = input.bool(false, "1 ★ (non validé)", inline = "ob4", group = grpOB)
-show0    = input.bool(false, "0 ★ (non validé)", inline = "ob5", group = grpOB, tooltip = "Un OB non validé a moins de 3 confluences. Coche ce que tu veux voir, décoche le reste.")
-maxPerTF = input.int(2, "OB max par UT et par sens", minval = 1, maxval = 10, group = grpOB)
+// ② OB à afficher
+grpSel   = "② OB à afficher"
+showBuy  = input.bool(true, "OB acheteurs (▲)", inline = "s0", group = grpSel)
+showSell = input.bool(true, "OB vendeurs (▼)",  inline = "s0", group = grpSel)
+show5    = input.bool(true,  "5 ★", inline = "s1", group = grpSel)
+show4    = input.bool(true,  "4 ★", inline = "s1", group = grpSel)
+show3    = input.bool(true,  "3 ★", inline = "s1", group = grpSel)
+show2    = input.bool(false, "2 ★", inline = "s2", group = grpSel)
+show1    = input.bool(false, "1 ★", inline = "s2", group = grpSel)
+show0    = input.bool(false, "0 ★", inline = "s2", group = grpSel, tooltip = "Les OB de 0, 1 ou 2 étoiles sont « non validés » : moins de 3 confluences.")
+maxPerTF = input.int(2, "OB max par unité de temps et par sens", minval = 1, maxval = 10, group = grpSel)
+useDist  = input.bool(true, "Seulement les OB proches du prix", group = grpSel, tooltip = "Les OB trop loin du prix sont masqués. Ils réapparaissent quand le prix s'en rapproche.")
+distAtr  = input.float(3.0, "Distance max (x ATR journalier)", minval = 0.5, step = 0.5, group = grpSel, tooltip = "ATR journalier = mouvement moyen d'une journée. 3 = OB à moins de 3 journées moyennes de mouvement du prix.")
 
-// ③ POI
-grpPoi  = "③ POI (points d'intérêt multi-UT)"
-showPoi = input.bool(true, "Afficher les POI", group = grpPoi, tooltip = "Un POI est la zone où un OB d'une unité de temps se superpose à un OB d'une autre unité de temps dans le même sens. Il prend les étoiles du meilleur des deux OB + 1 étoile bonus (max 5).")
-poiTF5  = input.bool(true, "5m",     inline = "pt1", group = grpPoi)
-poiTF15 = input.bool(true, "15m",    inline = "pt1", group = grpPoi)
-poiTF4h = input.bool(true, "4H",     inline = "pt1", group = grpPoi)
-poiTFD  = input.bool(true, "Daily",  inline = "pt2", group = grpPoi)
-poiTFW  = input.bool(true, "Weekly", inline = "pt2", group = grpPoi, tooltip = "Unité de temps du POI = la plus grande des deux UT qui se superposent (ex : POI 15m+4H = POI 4H).")
-poi5    = input.bool(true,  "5 ★", inline = "p1", group = grpPoi)
-poi4    = input.bool(true,  "4 ★", inline = "p1", group = grpPoi)
-poi3    = input.bool(false, "3 ★", inline = "p1", group = grpPoi)
-poi2    = input.bool(false, "2 ★ (non validé)", inline = "p2", group = grpPoi)
-poi1    = input.bool(false, "1 ★ (non validé)", inline = "p2", group = grpPoi)
-maxPoi  = input.int(3, "POI max par sens", minval = 1, maxval = 20, group = grpPoi)
+// ③ OB cassés
+grpBrk     = "③ OB cassés"
+invMode    = input.string("Clôture au travers", "Un OB est cassé quand", options = ["Clôture au travers", "Mèche au travers", "Le prix dépasse 50 % de l'OB"], group = grpBrk, tooltip = "Clôture au travers = une bougie clôture de l'autre côté de l'OB.\nMèche au travers = une mèche traverse tout l'OB.\n50 % = le prix rentre jusqu'au milieu de l'OB sans réagir.")
+showBroken = input.bool(false, "Garder les OB cassés à l'écran (en gris)", group = grpBrk, tooltip = "Décoché : un OB cassé disparaît tout seul.\nCoché : il reste en gris pointillé (un OB cassé devient souvent un support / une résistance).")
+maxBroken  = input.int(5, "OB cassés max affichés", minval = 1, maxval = 50, group = grpBrk)
 
-// ④ Liquidité
-grpLiq    = "④ Liquidité"
-showPDHL  = input.bool(true, "Plus haut / plus bas de la veille (PDH / PDL)", group = grpLiq)
-showPWHL  = input.bool(true, "Plus haut / plus bas de la semaine dernière (PWH / PWL)", group = grpLiq)
+// ④ Style
+grpSty     = "④ Style"
+drawMode   = input.string("Un seul trait", "Style des OB", options = ["Un seul trait", "Deux traits (haut et bas)", "Rectangle rempli"], group = grpSty)
+linePos    = input.string("Bord d'entrée", "Position du trait unique", options = ["Bord d'entrée", "Milieu de l'OB (50 %)"], group = grpSty, tooltip = "Bord d'entrée = le haut d'un OB acheteur ou le bas d'un OB vendeur : là où le prix touche l'OB en premier.")
+oneColor   = input.bool(false, "Tous les OB d'une seule couleur", inline = "oc", group = grpSty)
+colOne     = input.color(color.black, "", inline = "oc", group = grpSty)
+lineW      = input.int(2, "Épaisseur des traits", minval = 1, maxval = 5, group = grpSty)
+fillTransp = input.int(80, "Transparence des rectangles (%)", minval = 0, maxval = 100, group = grpSty)
+lineLen    = input.string("Courts (près du prix)", "Longueur", options = ["Courts (près du prix)", "Depuis la bougie de l'OB"], group = grpSty)
+showLbl    = input.bool(true, "Afficher les étiquettes (UT + étoiles)", group = grpSty)
+txtSizeIn  = input.string("Petit", "Taille du texte", options = ["Petit", "Normal", "Grand"], group = grpSty)
+showTable  = input.bool(true, "Afficher le tableau", group = grpSty)
 
-// ⑤ OB / POI cassés
-grpBrk     = "⑤ OB / POI cassés ou non respectés"
-invMode    = input.string("Clôture au travers", "Un OB / POI disparaît quand", options = ["Clôture au travers", "Mèche au travers", "Le prix dépasse 50 % de la zone"], group = grpBrk, tooltip = "Clôture au travers = une bougie clôture de l'autre côté de la zone (cassé).\nMèche au travers = une mèche traverse toute la zone.\n50 % = le prix entre jusqu'au milieu de la zone sans réagir : la zone n'est pas respectée.")
-delTouch   = input.bool(false, "Faire disparaître un OB / POI dès qu'il a été touché", group = grpBrk, tooltip = "Coché : une zone ne sert qu'une fois. Dès que le prix la touche, elle disparaît (l'alerte est quand même envoyée).")
-showBroken = input.bool(false, "Garder les OB / POI cassés à l'écran (en gris)", group = grpBrk, tooltip = "Décoché (par défaut) : les zones cassées ou non respectées disparaissent toutes seules.\nCoché : elles restent en petits points gris. Un OB acheteur cassé devient souvent une résistance, un OB vendeur cassé un support (breaker block).")
-maxBroken  = input.int(5, "Nombre max d'OB / POI cassés affichés", minval = 1, maxval = 50, group = grpBrk)
+// ⑤ Liquidité
+grpLiq   = "⑤ Liquidité"
+showPDHL = input.bool(true, "PDH / PDL (plus haut / plus bas de la veille)", group = grpLiq)
+showPWHL = input.bool(true, "PWH / PWL (plus haut / plus bas de la semaine dernière)", group = grpLiq)
 
-// ⑥ Détection des OB
-grpDet   = "⑥ Détection des OB"
+// ⑥ Couleurs
+grpCol    = "⑥ Couleurs"
+colBull   = input.color(#089981, "OB acheteur", inline = "c1", group = grpCol)
+colBear   = input.color(#F23645, "OB vendeur",  inline = "c1", group = grpCol)
+col5      = input.color(#FFC107, "OB 5 ★",      inline = "c1", group = grpCol)
+colLiq    = input.color(#FF9800, "PDH / PDL / PWH / PWL", inline = "c2", group = grpCol)
+colBroken = input.color(#9598A1, "OB cassé",              inline = "c2", group = grpCol)
+txtCol    = input.color(color.white, "Texte", inline = "c3", group = grpCol)
+txtCol5   = input.color(color.black, "Texte 5 ★", inline = "c3", group = grpCol)
+
+// ⑦ Détection (avancé)
+grpDet   = "⑦ Détection (avancé)"
 zoneMode = input.string("Mèche", "Zone de l'OB", options = ["Mèche", "Corps"], group = grpDet)
 dispMult = input.float(1.5, "Déplacement : corps ≥ x ATR", minval = 0.1, step = 0.1, group = grpDet)
 atrLen   = input.int(14, "Longueur ATR", minval = 1, group = grpDet)
@@ -87,27 +79,14 @@ swingLen = input.int(5, "Longueur swing (BOS)", minval = 2, group = grpDet)
 sweepLen = input.int(20, "Recul prise de liquidité", minval = 3, group = grpDet)
 emaLen   = input.int(200, "Longueur EMA tendance", minval = 10, group = grpDet)
 
-// ⑦ Couleurs
-grpCol      = "⑦ Couleurs"
-colBull     = input.color(#089981, "OB acheteur",  inline = "c1", group = grpCol)
-colBear     = input.color(#F23645, "OB vendeur",   inline = "c1", group = grpCol)
-col5        = input.color(#FFC107, "OB 5 ★",       inline = "c1", group = grpCol)
-colPoiBull  = input.color(#2962FF, "POI acheteur", inline = "c2", group = grpCol)
-colPoiBear  = input.color(#9C27B0, "POI vendeur",  inline = "c2", group = grpCol)
-colLiq      = input.color(#FF9800, "Niveaux de liquidité", inline = "c6", group = grpCol)
-colBroken   = input.color(#787B86, "OB / POI cassé", inline = "c7", group = grpCol)
-txtCol      = input.color(color.white, "Texte étiquettes", inline = "c9", group = grpCol)
-txtCol5     = input.color(color.black, "Texte 5 ★",        inline = "c9", group = grpCol)
-
-alertMinStars = input.int(4, "Alerte si le prix touche un OB / POI d'au moins (étoiles)", minval = 0, maxval = 5, group = "⑧ Alertes")
+alertMinStars = input.int(4, "Alerte quand le prix touche un OB d'au moins (étoiles)", minval = 0, maxval = 5, group = "⑧ Alertes")
 
 txtSize = txtSizeIn == "Petit" ? size.small : txtSizeIn == "Grand" ? size.large : size.normal
-int barMs   = time - nz(time[1], time)
-int futureT = time + 4 * barMs    // étiquettes des OB
-int futureL = time + 18 * barMs   // étiquettes PDH / PDL / PWH / PWL
-int futureP = time + 22 * barMs   // étiquettes des POI, plus à droite pour ne pas cacher les OB
-int shortL  = time - 15 * barMs   // début des traits courts
-float dAtr  = request.security(syminfo.tickerid, "D", ta.atr(14)[1], lookahead = barmerge.lookahead_on)
+int   barMs   = time - nz(time[1], time)
+int   futureT = time + 4 * barMs     // étiquettes des OB
+int   futureL = time + 16 * barMs    // étiquettes PDH / PDL / PWH / PWL
+int   shortL  = time - 15 * barMs    // début des traits courts
+float dAtr    = request.security(syminfo.tickerid, "D", ta.atr(14)[1], lookahead = barmerge.lookahead_on)
 
 // ═════════════════════════════ FONCTIONS ═════════════════════════════
 starStr(int n) =>
@@ -118,13 +97,6 @@ starStr(int n) =>
 
 starAllowed(int n) =>
     n == 5 ? show5 : n == 4 ? show4 : n == 3 ? show3 : n == 2 ? show2 : n == 1 ? show1 : show0
-
-poiAllowed(int n) =>
-    n == 5 ? poi5 : n == 4 ? poi4 : n == 3 ? poi3 : n == 2 ? poi2 : poi1
-
-// rang des UT : 3m = 1, 5m = 2, 15m = 3, 4H = 4, D = 5, W = 6
-poiTFAllowed(int r) =>
-    r == 2 ? poiTF5 : r == 3 ? poiTF15 : r == 4 ? poiTF4h : r == 5 ? poiTFD : r == 6 ? poiTFW : false
 
 // masque : DÉPLACEMENT = 1, DISCOUNT/PREMIUM = 2, BOS = 4, SWEEP = 8, TENDANCE = 16
 hasBit(int m, int b) =>
@@ -211,12 +183,11 @@ obDetect() =>
     // [1] = valeurs de la dernière bougie clôturée (non repaint)
     [bTop[1], bBot[1], bTm[1], bMk[1], sTop[1], sBot[1], sTm[1], sMk[1]]
 
-// ═════════════════════════════ DESSIN DES ZONES ═════════════════════════════
+// ═════════════════════════════ DESSIN ═════════════════════════════
 type Zone
     box    bx
-    line   lt
-    line   lbt
-    line   lm
+    line   l1
+    line   l2
     label  lb
     float  top
     float  bot
@@ -224,263 +195,166 @@ type Zone
     bool   bull
     int    stars
     string tf
-    int    rank
     bool   touched
-    bool   shown
     color  col
-    color  lcol
     color  tcol
 
-zDraw(int left, float top, float bot, color c, int w) =>
-    box  bx  = na
-    line lt  = na
-    line lbt = na
-    line lm  = na
-    if drawMode == "Rectangles"
-        bx := box.new(left, top, time, bot, xloc = xloc.bar_time, border_color = c, border_width = w, bgcolor = color.new(c, fillTransp))
-    else
-        lt  := line.new(left, top, time, top, xloc = xloc.bar_time, color = c, width = w)
-        lbt := line.new(left, bot, time, bot, xloc = xloc.bar_time, color = c, width = w)
-    if showMid
-        lm := line.new(left, (top + bot) / 2, time, (top + bot) / 2, xloc = xloc.bar_time, color = color.new(c, 30), width = 1, style = line.style_dotted)
-    [bx, lt, lbt, lm]
-
-zLabel(string txt, string tip, float y, color c, color tc, string sz) =>
-    label lb = na
-    if showLbl
-        lb := label.new(time, y, txt, xloc = xloc.bar_time, style = label.style_label_left, color = color.new(c, lblTransp), textcolor = tc, size = sz, tooltip = tip, textalign = text.align_left)
-    lb
+// niveau du trait unique
+lineY(bool bull, float top, float bot) =>
+    linePos == "Bord d'entrée" ? (bull ? top : bot) : (top + bot) / 2
 
 zRight(Zone z, int x) =>
     if not na(z.bx)
         z.bx.set_right(x)
-    if not na(z.lt)
-        z.lt.set_x2(x)
-    if not na(z.lbt)
-        z.lbt.set_x2(x)
-    if not na(z.lm)
-        z.lm.set_x2(x)
+    if not na(z.l1)
+        z.l1.set_x2(x)
+    if not na(z.l2)
+        z.l2.set_x2(x)
     if not na(z.lb)
         z.lb.set_x(x)
-
-zStyle(Zone z, string st) =>
-    if not na(z.bx)
-        z.bx.set_border_style(st)
-    if not na(z.lt)
-        z.lt.set_style(st)
-    if not na(z.lbt)
-        z.lbt.set_style(st)
-
-zColor(Zone z, color c) =>
-    if not na(z.bx)
-        z.bx.set_border_color(c)
-        z.bx.set_bgcolor(color.new(c, fillTransp))
-    if not na(z.lt)
-        z.lt.set_color(c)
-    if not na(z.lbt)
-        z.lbt.set_color(c)
-    if not na(z.lm)
-        z.lm.set_color(color.new(c, 30))
-    if not na(z.lb)
-        z.lb.set_color(color.new(c, lblTransp))
-        z.lb.set_textcolor(color.white)
-
-zDelete(Zone z) =>
-    if not na(z.bx)
-        z.bx.delete()
-    if not na(z.lt)
-        z.lt.delete()
-    if not na(z.lbt)
-        z.lbt.delete()
-    if not na(z.lm)
-        z.lm.delete()
-    if not na(z.lb)
-        z.lb.delete()
 
 zLeft(Zone z, int x) =>
     if not na(z.bx)
         z.bx.set_left(x)
-    if not na(z.lt)
-        z.lt.set_x1(x)
-    if not na(z.lbt)
-        z.lbt.set_x1(x)
-    if not na(z.lm)
-        z.lm.set_x1(x)
+    if not na(z.l1)
+        z.l1.set_x1(x)
+    if not na(z.l2)
+        z.l2.set_x1(x)
 
-// rend une zone visible ou invisible (sans la supprimer)
+zStyle(Zone z, string st) =>
+    if not na(z.bx)
+        z.bx.set_border_style(st)
+    if not na(z.l1)
+        z.l1.set_style(st)
+    if not na(z.l2)
+        z.l2.set_style(st)
+
+// visible / invisible sans supprimer (filtre de distance)
 zShow(Zone z, bool v) =>
     color c = v ? z.col : color.new(z.col, 100)
     if not na(z.bx)
         z.bx.set_border_color(c)
         z.bx.set_bgcolor(color.new(z.col, v ? fillTransp : 100))
-    if not na(z.lt)
-        z.lt.set_color(c)
-    if not na(z.lbt)
-        z.lbt.set_color(c)
-    if not na(z.lm)
-        z.lm.set_color(color.new(z.col, v ? 30 : 100))
+    if not na(z.l1)
+        z.l1.set_color(c)
+    if not na(z.l2)
+        z.l2.set_color(c)
     if not na(z.lb)
-        z.lb.set_color(v ? z.lcol : color.new(z.lcol, 100))
+        z.lb.set_color(c)
         z.lb.set_textcolor(v ? z.tcol : color.new(z.tcol, 100))
 
-zFill(Zone z, int left, color c, int w) =>
-    [bx, lt, lbt, lm] = zDraw(left, z.top, z.bot, c, w)
-    z.bx  := bx
-    z.lt  := lt
-    z.lbt := lbt
-    z.lm  := lm
+zDelete(Zone z) =>
+    if not na(z.bx)
+        z.bx.delete()
+    if not na(z.l1)
+        z.l1.delete()
+    if not na(z.l2)
+        z.l2.delete()
+    if not na(z.lb)
+        z.lb.delete()
 
 var array<Zone> obs    = array.new<Zone>()
-var array<Zone> pois   = array.new<Zone>()
 var array<Zone> broken = array.new<Zone>()
 
-// garde au maximum `maxN` zones d'un même sens (et d'une même UT si tfName n'est pas vide)
-// les zones affichées et les zones masquées sont comptées séparément
-prune(array<Zone> arr, bool bull, string tfName, int maxN, bool shownFlag) =>
+addOB(float top, float bot, int t, int mask, bool bull, string tfName) =>
+    int    stars = countStars(mask)
+    color  c     = oneColor ? colOne : stars == 5 ? col5 : bull ? colBull : colBear
+    color  tc    = (not oneColor and stars == 5) ? txtCol5 : txtCol
+    box    bx    = na
+    line   l1    = na
+    line   l2    = na
+    float  ly    = (top + bot) / 2
+    if drawMode == "Rectangle rempli"
+        bx := box.new(t, top, time, bot, xloc = xloc.bar_time, border_color = c, border_width = 1, bgcolor = color.new(c, fillTransp))
+    else if drawMode == "Deux traits (haut et bas)"
+        l1 := line.new(t, top, time, top, xloc = xloc.bar_time, color = c, width = lineW)
+        l2 := line.new(t, bot, time, bot, xloc = xloc.bar_time, color = c, width = lineW)
+    else
+        ly := lineY(bull, top, bot)
+        l1 := line.new(t, ly, time, ly, xloc = xloc.bar_time, color = c, width = lineW)
+    label lb = na
+    if showLbl
+        string txt = (bull ? "▲ " : "▼ ") + tfName + " " + starStr(stars) + (stars < 3 ? " non validé" : "")
+        string tip = (bull ? "OB ACHETEUR " : "OB VENDEUR ") + tfName + " " + starStr(stars) + "\nZone : " + str.tostring(bot, format.mintick) + " – " + str.tostring(top, format.mintick) + "\n" + detTxt(mask, bull)
+        lb := label.new(time, ly, txt, xloc = xloc.bar_time, style = label.style_label_left, color = c, textcolor = tc, size = txtSize, tooltip = tip)
+    obs.push(Zone.new(bx, l1, l2, lb, top, bot, t, bull, stars, tfName, false, c, tc))
+    // garder seulement les maxPerTF OB les plus récents pour cette UT et ce sens
     int cnt = 0
-    for i = arr.size() - 1 to 0
-        Zone o = arr.get(i)
-        if o.bull == bull and o.shown == shownFlag and (tfName == "" or o.tf == tfName)
+    for i = obs.size() - 1 to 0
+        Zone o = obs.get(i)
+        if o.bull == bull and o.tf == tfName
             cnt += 1
-            if cnt > maxN
+            if cnt > maxPerTF
                 zDelete(o)
-                arr.remove(i)
-
-// ═════════════════════════════ OB ET POI ═════════════════════════════
-addPOI(float top, float bot, int left, int stars, bool bull, string name, string tfBig, int rank) =>
-    // pas de doublon : si un POI du même sens chevauche déjà cette zone, on garde le mieux noté
-    bool skip = false
-    if pois.size() > 0
-        for i = pois.size() - 1 to 0
-            Zone p = pois.get(i)
-            if p.bull == bull and p.top >= bot and p.bot <= top
-                if p.stars >= stars
-                    skip := true
-                else
-                    zDelete(p)
-                    pois.remove(i)
-    if not skip
-        color c = bull ? colPoiBull : colPoiBear
-        Zone z = Zone.new(top = top, bot = bot, left = left, bull = bull, stars = stars, tf = tfBig, rank = rank, touched = false, shown = true)
-        zFill(z, left, color.new(c, 20), lineW)
-        z.col  := color.new(c, 20)
-        z.lcol := color.new(c, lblTransp)
-        z.tcol := txtCol
-        string tip = "POI " + (bull ? "ACHETEUR" : "VENDEUR") + " " + starStr(stars) + "\nLes OB " + name + " se superposent ici :\nplusieurs unités de temps montrent des ordres importants au même endroit."
-        z.lb := zLabel("◆ POI " + tfBig + " " + starStr(stars) + (stars < 3 ? " non validé" : ""), tip, (top + bot) / 2, c, txtCol, txtSize)
-        pois.push(z)
-        prune(pois, bull, "", maxPoi, true)
-
-addOB(float top, float bot, int t, int mask, bool bull, string tfName, int rank, bool display) =>
-    int  stars = countStars(mask)
-    bool shown = display and starAllowed(stars) and (bull ? showBuy : showSell)
-    Zone z = Zone.new(top = top, bot = bot, left = t, bull = bull, stars = stars, tf = tfName, rank = rank, touched = false, shown = shown)
-    if shown
-        color  c   = stars == 5 ? col5 : bull ? colBull : colBear
-        string det = detTxt(mask, bull)
-        string txt = (bull ? "▲ OB " : "▼ OB ") + tfName + " " + starStr(stars) + (stars < 3 ? " non validé" : "") + (showDet ? "\n" + det : "")
-        zFill(z, t, c, stars == 5 ? lineW + 1 : lineW)
-        z.col  := c
-        z.lcol := color.new(c, lblTransp)
-        z.tcol := stars == 5 ? txtCol5 : txtCol
-        z.lb := zLabel(txt, (bull ? "OB ACHETEUR " : "OB VENDEUR ") + tfName + " " + starStr(stars) + "\n" + det, (top + bot) / 2, c, stars == 5 ? txtCol5 : txtCol, txtSize)
-    obs.push(z)
-    prune(obs, bull, tfName, shown ? maxPerTF : 5, shown)
-    // POI : cet OB se superpose à un OB d'une autre UT dans le même sens
-    if showPoi
-        for j = 0 to obs.size() - 1
-            Zone o = obs.get(j)
-            if o.bull == bull and o.tf != tfName and o.top >= bot and o.bot <= top
-                float  pTop   = math.min(o.top, top)
-                float  pBot   = math.max(o.bot, bot)
-                int    pRank  = math.max(o.rank, rank)
-                int    pStars = math.min(5, math.max(o.stars, stars) + 1)
-                string pName  = o.rank < rank ? o.tf + "+" + tfName : tfName + "+" + o.tf
-                if pTop > pBot and poiAllowed(pStars) and poiTFAllowed(pRank)
-                    addPOI(pTop, pBot, math.max(t, o.left), pStars, bull, pName, o.rank > rank ? o.tf : tfName, pRank)
+                obs.remove(i)
     stars
 
 // Non repaint : dernière bougie CLÔTURÉE de l'UT demandée
-handleTF(simple string tf, string tfName, int rank, bool obOn) =>
+handleTF(simple string tf, string tfName, bool on) =>
     [bT, bB, bTm, bM, sT, sB, sTm, sM] = request.security(syminfo.tickerid, tf, obDetect(), lookahead = barmerge.lookahead_on)
-    bool usable  = timeframe.in_seconds(tf) >= timeframe.in_seconds()
-    bool display = showOB and obOn
-    bool detect  = usable and (display or showPoi)
-    int  prevB   = nz(bTm[1])
-    int  prevS   = nz(sTm[1])
-    if detect and bTm > 0 and bTm != prevB and not na(bT)
-        addOB(bT, bB, bTm, bM, true, tfName, rank, display)
-    if detect and sTm > 0 and sTm != prevS and not na(sT)
-        addOB(sT, sB, sTm, sM, false, tfName, rank, display)
-    usable and display
+    bool usable = on and timeframe.in_seconds(tf) >= timeframe.in_seconds()
+    int  prevB  = nz(bTm[1])
+    int  prevS  = nz(sTm[1])
+    if usable and showBuy and bTm > 0 and bTm != prevB and not na(bT) and starAllowed(countStars(bM))
+        addOB(bT, bB, bTm, bM, true, tfName)
+    if usable and showSell and sTm > 0 and sTm != prevS and not na(sT) and starAllowed(countStars(sM))
+        addOB(sT, sB, sTm, sM, false, tfName)
+    usable
 
-bool ok3  = handleTF("3",   "3m",  1, ob3)
-bool ok5  = handleTF("5",   "5m",  2, ob5)
-bool ok15 = handleTF("15",  "15m", 3, ob15)
-bool ok4h = handleTF("240", "4H",  4, ob4h)
-bool okD  = handleTF("D",   "D",   5, obD)
-bool okW  = handleTF("W",   "W",   6, obW)
+bool ok3  = handleTF("3",   "3m",  ob3)
+bool ok5  = handleTF("5",   "5m",  ob5)
+bool ok15 = handleTF("15",  "15m", ob15)
+bool ok4h = handleTF("240", "4H",  ob4h)
+bool okD  = handleTF("D",   "D",   obD)
+bool okW  = handleTF("W",   "W",   obW)
 
-// Zones touchées et cassées (OB ou POI)
-processZones(array<Zone> arr, string prefix) =>
-    bool t5b   = false
-    bool t5s   = false
-    bool tMin  = false
-    bool tBull = false
-    bool tBear = false
-    if arr.size() > 0
-        for i = arr.size() - 1 to 0
-            Zone o = arr.get(i)
-            float mid      = (o.top + o.bot) / 2
-            bool  isBroken = invMode == "Clôture au travers" ? (o.bull ? close < o.bot : close > o.top) : invMode == "Mèche au travers" ? (o.bull ? low < o.bot : high > o.top) : (o.bull ? low < mid : high > mid)
-            if isBroken
-                arr.remove(i)
-                if o.shown and showBroken
-                    // la zone reste affichée en gris, arrêtée à la bougie qui l'a cassée
-                    zRight(o, time)
-                    zColor(o, colBroken)
-                    zStyle(o, line.style_dotted)
-                    if not na(o.lb)
-                        o.lb.delete()
-                        o.lb := na
-                    broken.push(o)
-                    if broken.size() > maxBroken
-                        zDelete(broken.shift())
-                else
-                    zDelete(o)
+// ═════════════════════════════ OB TOUCHÉS / CASSÉS ═════════════════════════════
+bool touch5Bull = false
+bool touch5Bear = false
+bool touchMin   = false
+
+if obs.size() > 0
+    for i = obs.size() - 1 to 0
+        Zone o = obs.get(i)
+        float mid      = (o.top + o.bot) / 2
+        bool  isBroken = invMode == "Clôture au travers" ? (o.bull ? close < o.bot : close > o.top) : invMode == "Mèche au travers" ? (o.bull ? low < o.bot : high > o.top) : (o.bull ? low < mid : high > mid)
+        if isBroken
+            obs.remove(i)
+            if showBroken
+                // l'OB reste en gris pointillé, arrêté à la bougie qui l'a cassé, sans étiquette
+                o.col := colBroken
+                zShow(o, true)
+                zStyle(o, line.style_dotted)
+                zRight(o, time)
+                if not na(o.lb)
+                    o.lb.delete()
+                    o.lb := na
+                broken.push(o)
+                if broken.size() > maxBroken
+                    zDelete(broken.shift())
             else
-                bool inZone = o.bull ? low <= o.top : high >= o.bot
-                if inZone and not o.touched
-                    o.touched := true
-                    if o.shown
-                        zStyle(o, line.style_dashed)
-                        if o.bull
-                            tBull := true
-                        else
-                            tBear := true
-                        if o.stars >= alertMinStars
-                            tMin := true
-                            alert(syminfo.ticker + " : prix sur un " + prefix + (o.bull ? "ACHETEUR " : "VENDEUR ") + starStr(o.stars) + " [" + o.tf + "] " + str.tostring(o.bot, format.mintick) + " - " + str.tostring(o.top, format.mintick), alert.freq_once_per_bar)
-                        if o.stars == 5
-                            if o.bull
-                                t5b := true
-                            else
-                                t5s := true
-                if delTouch and o.touched
-                    zDelete(o)
-                    arr.remove(i)
-                else if barstate.islast and o.shown
-                    zRight(o, prefix == "POI " ? futureP : futureT)
-                    if lineLen == "Courts (près du prix)"
-                        zLeft(o, math.max(o.left, shortL))
-                    float dist = close > o.top ? close - o.top : close < o.bot ? o.bot - close : 0.0
-                    zShow(o, not useDist or na(dAtr) or dist <= distAtr * dAtr)
-    [t5b, t5s, tMin, tBull, tBear]
+                zDelete(o)
+        else
+            bool inZone = o.bull ? low <= o.top : high >= o.bot
+            if inZone and not o.touched
+                o.touched := true
+                zStyle(o, line.style_dashed)
+                if o.stars >= alertMinStars
+                    touchMin := true
+                    alert(syminfo.ticker + " : prix sur un OB " + (o.bull ? "ACHETEUR " : "VENDEUR ") + starStr(o.stars) + " [" + o.tf + "] " + str.tostring(o.bot, format.mintick) + " - " + str.tostring(o.top, format.mintick), alert.freq_once_per_bar)
+                if o.stars == 5
+                    if o.bull
+                        touch5Bull := true
+                    else
+                        touch5Bear := true
+            if barstate.islast
+                zRight(o, futureT)
+                if lineLen == "Courts (près du prix)"
+                    zLeft(o, math.max(o.left, shortL))
+                float dist = close > o.top ? close - o.top : close < o.bot ? o.bot - close : 0.0
+                zShow(o, not useDist or na(dAtr) or dist <= distAtr * dAtr)
 
-[ob5Bull, ob5Bear, obMin, obTBull, obTBear]       = processZones(obs, "OB ")
-[poi5Bull, poi5Bear, poiMin, poiTBull, poiTBear]  = processZones(pois, "POI ")
-
-// ═════════════════════════════ LIQUIDITÉ ═════════════════════════════
+// ═════════════════════════════ PDH / PDL / PWH / PWL ═════════════════════════════
 [pdh, pdl, dStart] = request.security(syminfo.tickerid, "D", [high[1], low[1], time], lookahead = barmerge.lookahead_on)
 [pwh, pwl, wStart] = request.security(syminfo.tickerid, "W", [high[1], low[1], time], lookahead = barmerge.lookahead_on)
 
@@ -492,7 +366,7 @@ drawLevel(bool show, float price, int x1, string txt) =>
         label.delete(lb)
         if show and not na(price)
             ln := line.new(x1, price, futureL, price, xloc = xloc.bar_time, color = colLiq, style = line.style_dashed, width = 1)
-            lb := label.new(futureL, price, txt, xloc = xloc.bar_time, style = label.style_label_left, color = color.new(colLiq, lblTransp), textcolor = txtCol, size = size.small, tooltip = "Niveau de liquidité : beaucoup de stops sont placés ici.")
+            lb := label.new(futureL, price, txt, xloc = xloc.bar_time, style = label.style_label_left, color = colLiq, textcolor = txtCol, size = size.small, tooltip = txt + " : " + str.tostring(price, format.mintick) + "\nNiveau de liquidité (beaucoup de stops sont placés ici).")
 
 drawLevel(showPDHL, pdh, dStart, "PDH")
 drawLevel(showPDHL, pdl, dStart, "PDL")
@@ -500,10 +374,9 @@ drawLevel(showPWHL, pwh, wStart, "PWH")
 drawLevel(showPWHL, pwl, wStart, "PWL")
 
 // ═════════════════════════════ ALERTES ═════════════════════════════
-alertcondition(ob5Bull or poi5Bull, "OB/POI acheteur 5★ touché", "{{ticker}} : le prix touche un OB ou POI ACHETEUR 5★")
-alertcondition(ob5Bear or poi5Bear, "OB/POI vendeur 5★ touché",  "{{ticker}} : le prix touche un OB ou POI VENDEUR 5★")
-alertcondition(obMin,  "OB touché (étoiles min)",  "{{ticker}} : le prix touche un OB bien noté")
-alertcondition(poiMin, "POI touché (étoiles min)", "{{ticker}} : le prix touche un POI bien noté")
+alertcondition(touch5Bull, "OB acheteur 5★ touché", "{{ticker}} : le prix touche un OB ACHETEUR 5★")
+alertcondition(touch5Bear, "OB vendeur 5★ touché",  "{{ticker}} : le prix touche un OB VENDEUR 5★")
+alertcondition(touchMin,   "OB touché (étoiles min)", "{{ticker}} : le prix touche un OB bien noté")
 
 // ═════════════════════════════ TABLEAU ═════════════════════════════
 bestStars(string tfName, bool bull) =>
@@ -511,46 +384,20 @@ bestStars(string tfName, bool bull) =>
     if obs.size() > 0
         for i = 0 to obs.size() - 1
             Zone o = obs.get(i)
-            if o.shown and o.tf == tfName and o.bull == bull and not o.touched and o.stars > best
+            if o.tf == tfName and o.bull == bull and not o.touched and o.stars > best
                 best := o.stars
     best
 
-// zone la plus proche du prix (acheteuse en dessous / vendeuse au-dessus)
-scanNear(array<Zone> arr, bool bull, string kind) =>
-    float  bd = na
-    float  bp = na
-    string bt = ""
-    if arr.size() > 0
-        for i = 0 to arr.size() - 1
-            Zone o = arr.get(i)
-            if o.shown and o.bull == bull
-                float d = math.max(0.0, bull ? close - o.top : o.bot - close)
-                if na(bd) or d < bd
-                    bd := d
-                    bp := bull ? o.top : o.bot
-                    bt := kind + o.tf + " " + starStr(o.stars)
-    [bd, bp, bt]
-
-nearTxt(bool bull) =>
-    [d1, p1, t1] = scanNear(obs, bull, "OB ")
-    [d2, p2, t2] = scanNear(pois, bull, "POI ")
-    bool   useOb = not na(d1) and (na(d2) or d1 <= d2)
-    float  d     = useOb ? d1 : d2
-    float  pr    = useOb ? p1 : p2
-    string t     = useOb ? t1 : t2
-    na(d) ? "aucune" : t + "  " + str.tostring(pr, format.mintick) + "  (" + str.tostring(d / close * 100, "#.##") + " %)"
-
-var bool legendMerged = false
-var table tbl = table.new(position.top_right, 3, 15, bgcolor = color.new(#131722, 0), border_color = color.new(color.gray, 70), border_width = 1, frame_color = color.new(color.gray, 50), frame_width = 1)
+var table tbl = table.new(position.top_right, 3, 7, bgcolor = color.new(#131722, 0), border_color = color.new(color.gray, 70), border_width = 1, frame_color = color.new(color.gray, 50), frame_width = 1)
 
 fillRow(int row, string tfName, bool usable) =>
     table.cell(tbl, 0, row, tfName, text_color = color.white, text_size = size.small)
     int bu = usable ? bestStars(tfName, true)  : -1
     int be = usable ? bestStars(tfName, false) : -1
-    string tu = not usable ? "off" : bu < 0 ? "aucun" : starStr(bu)
-    string te = not usable ? "off" : be < 0 ? "aucun" : starStr(be)
-    table.cell(tbl, 1, row, tu, text_color = not usable ? color.new(color.gray, 30) : bu == 5 ? col5 : colBull, text_size = size.small)
-    table.cell(tbl, 2, row, te, text_color = not usable ? color.new(color.gray, 30) : be == 5 ? col5 : colBear, text_size = size.small)
+    string tu = not usable ? "off" : bu < 0 ? "—" : starStr(bu)
+    string te = not usable ? "off" : be < 0 ? "—" : starStr(be)
+    table.cell(tbl, 1, row, tu, text_color = not usable ? color.gray : bu == 5 ? col5 : colBull, text_size = size.small)
+    table.cell(tbl, 2, row, te, text_color = not usable ? color.gray : be == 5 ? col5 : colBear, text_size = size.small)
 
 if showTable and barstate.islast
     table.cell(tbl, 0, 0, "UT",          text_color = color.white, text_size = size.small)
@@ -562,24 +409,3 @@ if showTable and barstate.islast
     fillRow(4, "4H",  ok4h)
     fillRow(5, "D",   okD)
     fillRow(6, "W",   okW)
-    if showNear
-        table.cell(tbl, 0, 7, "Achat ▲", text_color = colBull, text_size = size.small)
-        table.cell(tbl, 1, 7, nearTxt(true), text_color = color.white, text_size = size.small, text_halign = text.align_left, tooltip = "Zone acheteuse la plus proche sous le prix (prix du haut de la zone et distance).")
-        table.cell(tbl, 0, 8, "Vente ▼", text_color = colBear, text_size = size.small)
-        table.cell(tbl, 1, 8, nearTxt(false), text_color = color.white, text_size = size.small, text_halign = text.align_left, tooltip = "Zone vendeuse la plus proche au-dessus du prix (prix du bas de la zone et distance).")
-    if showLegend
-        table.cell(tbl, 0, 9,  "LÉGENDE", text_color = color.white, text_size = size.small)
-        table.cell(tbl, 0, 10, "▲ OB acheteur   ▼ OB vendeur", text_color = color.white, text_size = size.small, text_halign = text.align_left)
-        table.cell(tbl, 0, 11, "◆ POI = OB de 2 UT superposés", text_color = colPoiBull, text_size = size.small, text_halign = text.align_left)
-        table.cell(tbl, 0, 12, "★★★★★ = 5 confluences (doré)", text_color = col5, text_size = size.small, text_halign = text.align_left)
-        table.cell(tbl, 0, 13, "Trait plein = jamais touché", text_color = color.white, text_size = size.small, text_halign = text.align_left)
-        table.cell(tbl, 0, 14, "Tirets = déjà touché", text_color = color.white, text_size = size.small, text_halign = text.align_left)
-    // fusion des cellules une seule fois
-    if not legendMerged
-        if showNear
-            table.merge_cells(tbl, 1, 7, 2, 7)
-            table.merge_cells(tbl, 1, 8, 2, 8)
-        if showLegend
-            for r = 9 to 14
-                table.merge_cells(tbl, 0, r, 2, r)
-        legendMerged := true
